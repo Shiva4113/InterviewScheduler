@@ -1,5 +1,5 @@
-import React, { useState, Fragment, useRef } from 'react'
-import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Info, Upload } from 'lucide-react'
+import React, { useState, Fragment } from 'react'
+import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Info, Plus } from 'lucide-react'
 import { Menu, Transition, Dialog } from '@headlessui/react'
 
 import { Button } from "./ui/button"
@@ -10,8 +10,9 @@ export default function InterviewerPortal() {
   const [position, setPosition] = useState("Associate Professor of Computer Science")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState(null)
-  const [timetableImage, setTimetableImage] = useState(null)
-  const fileInputRef = useRef(null)
+  const [freeSlots, setFreeSlots] = useState([])
+  const [newSlotDate, setNewSlotDate] = useState('')
+  const [newSlotTime, setNewSlotTime] = useState('')
 
   const upcomingInterviews = [
     { id: 1, name: "John Doe", position: "Assistant Professor", date: "June 15, 2023", time: "2:00 PM" },
@@ -24,16 +25,12 @@ export default function InterviewerPortal() {
     setIsModalOpen(true)
   }
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0]
-    if (file && file.type.substr(0, 5) === "image") {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setTimetableImage(reader.result)
-      }
-      reader.readAsDataURL(file)
-    } else {
-      alert("Please upload an image file")
+  const addFreeSlot = (e) => {
+    e.preventDefault()
+    if (newSlotDate && newSlotTime) {
+      setFreeSlots([...freeSlots, { date: newSlotDate, time: newSlotTime }])
+      setNewSlotDate('')
+      setNewSlotTime('')
     }
   }
 
@@ -153,36 +150,37 @@ export default function InterviewerPortal() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-4">Your Timetable</h3>
-                  {timetableImage ? (
-                    <div className="relative">
-                      <img src={timetableImage} alt="Timetable" className="w-full rounded-lg" />
-                      <Button 
-                        onClick={() => fileInputRef.current.click()} 
-                        className="absolute top-2 right-2 bg-white text-gray-800 hover:bg-gray-100"
-                      >
-                        Update
+                  <h3 className="text-xl font-semibold mb-4">Free Slots</h3>
+                  <form onSubmit={addFreeSlot} className="mb-4">
+                    <div className="flex space-x-2">
+                      <input
+                        type="date"
+                        value={newSlotDate}
+                        onChange={(e) => setNewSlotDate(e.target.value)}
+                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      />
+                      <input
+                        type="time"
+                        value={newSlotTime}
+                        onChange={(e) => setNewSlotTime(e.target.value)}
+                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      />
+                      <Button type="submit">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Slot
                       </Button>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center w-full">
-                      <label htmlFor="timetable-upload" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-10 h-10 mb-3 text-gray-400" />
-                          <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                          <p className="text-xs text-gray-500">PNG, JPG or GIF (MAX. 800x400px)</p>
-                        </div>
-                        <input 
-                          id="timetable-upload" 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*"
-                          onChange={handleFileUpload}
-                          ref={fileInputRef}
-                        />
-                      </label>
-                    </div>
-                  )}
+                  </form>
+                  <ul className="space-y-2">
+                    {freeSlots.map((slot, index) => (
+                      <li key={index} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
+                        <span>{slot.date}</span>
+                        <span>{slot.time}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
             </div>
