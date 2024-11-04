@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('interviewee');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     if (email && password) {
       try {
         const response = await fetch('http://127.0.0.1:8000/login/', {
@@ -27,12 +29,15 @@ export default function Login() {
           } else {
             navigate('/interviewer');
           }
+        } else {
+          setError(data.message || 'Login failed. Please try again.');
         }
       } catch (err) {
         console.error('Login failed:', err);
+        setError('An error occurred. Please try again later.');
       }
     } else {
-      alert('Please enter both email and password');
+      setError('Please enter both email and password');
     }
   };
 
@@ -110,6 +115,10 @@ export default function Login() {
             </div>
           </div>
 
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
+
           <div>
             <button
               type="submit"
@@ -119,6 +128,11 @@ export default function Login() {
             </button>
           </div>
         </form>
+        <div className="text-sm text-center mt-4">
+          <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+            Don't have an account? Sign up
+          </Link>
+        </div>
       </div>
     </div>
   );

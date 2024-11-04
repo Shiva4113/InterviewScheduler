@@ -1,60 +1,93 @@
-import React, { useState } from 'react'
-import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Clock } from 'lucide-react'
-
-import { Button } from "./ui/button"
-import { Card, CardContent } from "./ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu"
+import React, { useState, Fragment } from 'react';
+import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Clock } from 'lucide-react';
+import { Menu, Transition } from '@headlessui/react';
+import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog"
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
-import { Label } from "./ui/label"
+} from "./ui/dialog";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Label } from "./ui/label";
 
 export default function CollegeInterviewPortal() {
-  const [userName, setUserName] = useState("John Doe")
-  const [position, setPosition] = useState("Assistant Professor of Computer Science")
-  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [userName, setUserName] = useState("John Doe");
+  const [position, setPosition] = useState("Assistant Professor of Computer Science");
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
-  // Mock data for available slots
   const availableSlots = [
     { id: 1, date: "June 15, 2023", time: "2:00 PM", interviewer: "Dr. Smith" },
     { id: 2, date: "June 15, 2023", time: "4:00 PM", interviewer: "Dr. Johnson" },
     { id: 3, date: "June 16, 2023", time: "10:00 AM", interviewer: "Dr. Williams" },
     { id: 4, date: "June 16, 2023", time: "3:00 PM", interviewer: "Dr. Brown" },
-  ]
+  ];
 
   const handleSlotSelection = (slot) => {
-    setSelectedSlot(slot)
-  }
+    setSelectedSlot(slot);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">College Interview Portal</h1>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2">
-                <User className="h-5 w-5" />
-                <span>{userName}</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Logout</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Menu as="div" className="relative inline-block text-left">
+            <Menu.Button className="inline-flex justify-center items-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
+              <User className="h-5 w-5 mr-2" />
+              <span>{userName}</span>
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </Menu.Button>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <Menu.Items className="absolute right-0 w-56 mt-2 origin-top-right bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="px-1 py-1">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        className={`${
+                          active ? 'bg-indigo-500 text-white' : 'text-gray-900'
+                        } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                      >
+                        Profile
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        className={`${
+                          active ? 'bg-indigo-500 text-white' : 'text-gray-900'
+                        } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                      >
+                        Settings
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        className={`${
+                          active ? 'bg-indigo-500 text-white' : 'text-gray-900'
+                        } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                      >
+                        Logout
+                      </button>
+                    )}
+                  </Menu.Item>
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
         </div>
       </header>
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -146,5 +179,5 @@ export default function CollegeInterviewPortal() {
         </div>
       </main>
     </div>
-  )
+  );
 }

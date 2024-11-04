@@ -99,116 +99,89 @@ export default function InterviewerPortal() {
         <div className="px-4 py-6 sm:px-0">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {userName}!</h2>
           <p className="text-xl text-gray-600 mb-6">Position: {position}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-4">Upcoming Interviews</h3>
-                  <ul className="space-y-4">
-                    {upcomingInterviews.map((interview) => (
-                      <li key={interview.id} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <Calendar className="h-5 w-5 text-blue-500 mr-3" />
-                          <div>
-                            <p className="font-medium">{interview.name}</p>
-                            <p className="text-sm text-gray-500">{interview.date} - {interview.time}</p>
-                          </div>
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-xl font-semibold mb-4">Upcoming Interviews</h3>
+                <ul className="space-y-4">
+                  {upcomingInterviews.map((interview) => (
+                    <li key={interview.id} className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Calendar className="h-5 w-5 text-blue-500 mr-3" />
+                        <div>
+                          <p className="font-medium">{interview.name}</p>
+                          <p className="text-sm text-gray-500">{interview.date} - {interview.time}</p>
                         </div>
-                        <Button onClick={() => openCandidateModal(interview)}>
-                          <Info className="h-4 w-4 mr-2" />
-                          View Details
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-4">Interview Schedule</h3>
-                  <ul className="space-y-4">
-                    <li className="flex justify-between items-center">
-                      <span className="font-medium">This Week</span>
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        2 Interviews
-                      </span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span className="font-medium">Next Week</span>
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        1 Interview
-                      </span>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span className="font-medium">This Month</span>
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        5 Interviews
-                      </span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-4">Free Slots</h3>
-                  <form onSubmit={addFreeSlot} className="mb-4">
-                    <div className="flex space-x-2">
-                      <input
-                        type="date"
-                        value={newSlotDate}
-                        onChange={(e) => setNewSlotDate(e.target.value)}
-                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        required
-                      />
-                      <input
-                        type="time"
-                        value={newSlotTime}
-                        onChange={(e) => setNewSlotTime(e.target.value)}
-                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        required
-                      />
-                      <Button type="submit">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Slot
+                      </div>
+                      <Button onClick={() => openCandidateModal(interview)}>
+                        <Info className="h-4 w-4 mr-2" />
+                        View Details
                       </Button>
-                    </div>
-                  </form>
-                  <ul className="space-y-2">
-                    {freeSlots.map((slot, index) => (
-                      <li key={index} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
-                        <span>{slot.date}</span>
-                        <span>{slot.time}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="space-y-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-4">Quick Links</h3>
-                  <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      View Full Schedule
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Interview Guidelines
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Evaluation Forms
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <Bell className="h-4 w-4 mr-2" />
-                      Notifications
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-xl font-semibold mb-4">Interview Schedule</h3>
+                <ul className="space-y-4">
+                  <li className="flex justify-between items-center">
+                    <span className="font-medium">This Week</span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      2 Interviews
+                    </span>
+                  </li>
+                  <li className="flex justify-between items-center">
+                    <span className="font-medium">Next Week</span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                      1 Interview
+                    </span>
+                  </li>
+                  <li className="flex justify-between items-center">
+                    <span className="font-medium">This Month</span>
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      5 Interviews
+                    </span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-xl font-semibold mb-4">Free Slots</h3>
+                <form onSubmit={addFreeSlot} className="mb-4">
+                  <div className="flex space-x-2">
+                    <input
+                      type="date"
+                      value={newSlotDate}
+                      onChange={(e) => setNewSlotDate(e.target.value)}
+                      className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                    <input
+                      type="time"
+                      value={newSlotTime}
+                      onChange={(e) => setNewSlotTime(e.target.value)}
+                      className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                    <Button type="submit">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Slot
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </form>
+                <ul className="space-y-2">
+                  {freeSlots.map((slot, index) => (
+                    <li key={index} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
+                      <span>{slot.date}</span>
+                      <span>{slot.time}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
