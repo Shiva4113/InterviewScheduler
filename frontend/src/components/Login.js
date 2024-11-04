@@ -7,15 +7,29 @@ export default function Login() {
   const [role, setRole] = useState('interviewee');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically validate the user credentials against a backend
-    // For this example, we'll just simulate a successful login
     if (email && password) {
-      if (role === 'interviewee') {
-        navigate('/interviewee');
-      } else {
-        navigate('/interviewer');
+      try {
+        const response = await fetch('http://127.0.0.1:8000/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password, role })
+        });
+  
+        const data = await response.json();
+        
+        if (response.ok) {
+          if (role === 'interviewee') {
+            navigate('/interviewee');
+          } else {
+            navigate('/interviewer');
+          }
+        }
+      } catch (err) {
+        console.error('Login failed:', err);
       }
     } else {
       alert('Please enter both email and password');
