@@ -22,9 +22,7 @@ def main():
     embed_model = get_embed_model()
 
     input_files = [
-        'samples/ShivaGolugula_Resume.pdf',
-        'samples/yuans-resume-template.pdf',
-        'samples/jigs.pdf'
+        '../samples/Resume_ShivaGolugula.pdf'
     ]
 
     for file in input_files:
