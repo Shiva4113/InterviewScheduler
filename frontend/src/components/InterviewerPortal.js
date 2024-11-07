@@ -1,9 +1,9 @@
-import React, { useState, Fragment } from 'react'
-import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Info, Plus } from 'lucide-react'
+import React, { useState, useEffect, Fragment } from 'react'
+import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Info, Plus, Trash2 } from 'lucide-react'
 import { Menu, Transition, Dialog } from '@headlessui/react'
-
 import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
+import axios from 'axios'
 
 export default function InterviewerPortal() {
   const [userName, setUserName] = useState("Dr. Jane Smith")
@@ -20,19 +20,49 @@ export default function InterviewerPortal() {
     { id: 3, name: "Bob Williams", position: "Assistant Professor", date: "June 22, 2023", time: "3:00 PM" },
   ]
 
-  const openCandidateModal = (candidate) => {
-    setSelectedCandidate(candidate)
-    setIsModalOpen(true)
-  }
+  useEffect(() => {
+    // Fetch free slots from the backend
+    const fetchFreeSlots = async () => {
+      try {
+        const response = await axios.get('/free-slots');
+        setFreeSlots(response.data);
+      } catch (error) {
+        console.error('Error fetching free slots:', error);
+      }
+    };
+    fetchFreeSlots();
+  }, []);
 
-  const addFreeSlot = (e) => {
-    e.preventDefault()
+  const addFreeSlot = async (e) => {
+    e.preventDefault();
     if (newSlotDate && newSlotTime) {
-      setFreeSlots([...freeSlots, { date: newSlotDate, time: newSlotTime }])
-      setNewSlotDate('')
-      setNewSlotTime('')
+      try {
+        const response = await axios.post('/free-slots', {
+          date: newSlotDate,
+          time: newSlotTime,
+        });
+        setFreeSlots([...freeSlots, response.data]);
+        setNewSlotDate('');
+        setNewSlotTime('');
+      } catch (error) {
+        console.error('Error adding free slot:', error);
+      }
     }
-  }
+  };
+
+  const deleteFreeSlot = async (id) => {
+    try {
+      await axios.delete(`/free-slots/${id}`);
+      setFreeSlots(freeSlots.filter(slot => slot.id !== id));
+    } catch (error) {
+      console.error('Error deleting free slot:', error);
+    }
+  };
+
+  const openCandidateModal = (candidate) => {
+    setSelectedCandidate(candidate);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -124,31 +154,6 @@ export default function InterviewerPortal() {
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <h3 className="text-xl font-semibold mb-4">Interview Schedule</h3>
-                <ul className="space-y-4">
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">This Week</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      2 Interviews
-                    </span>
-                  </li>
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">Next Week</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      1 Interview
-                    </span>
-                  </li>
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">This Month</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      5 Interviews
-                    </span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
                 <h3 className="text-xl font-semibold mb-4">Free Slots</h3>
                 <form onSubmit={addFreeSlot} className="mb-4">
                   <div className="flex space-x-2">
@@ -173,10 +178,13 @@ export default function InterviewerPortal() {
                   </div>
                 </form>
                 <ul className="space-y-2">
-                  {freeSlots.map((slot, index) => (
-                    <li key={index} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
-                      <span>{slot.date}</span>
-                      <span>{slot.time}</span>
+                  {freeSlots.map((slot) => (
+                    <li key={slot.id} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
+                      <span>{slot.date} - {slot.time}</span>
+                      <Button variant="ghost" size="sm" onClick={() => deleteFreeSlot(slot.id)}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <span className="sr-only">Delete slot</span>
+                      </Button>
                     </li>
                   ))}
                 </ul>

@@ -7,14 +7,14 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('interviewee');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState(''); // New phone state
   const [resume, setResume] = useState(null);
+  const [department, setDepartment] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Here you would typically send the signup data to your backend
-    // For this example, we'll just simulate a successful signup
-    if (email && password && confirmPassword && name) {
+    if (email && password && confirmPassword && name && phone) {
       if (password !== confirmPassword) {
         alert("Passwords don't match");
         return;
@@ -23,7 +23,18 @@ export default function Signup() {
         alert("Please upload your resume");
         return;
       }
-      console.log('Signup successful', { email, name, role, resume: resume ? resume.name : 'N/A' });
+      if (role === 'interviewer' && !department) {
+        alert("Please select your department");
+        return;
+      }
+      console.log('Signup successful', { 
+        email, 
+        name, 
+        phone, // Include phone number in the console output
+        role, 
+        resume: resume ? resume.name : 'N/A',
+        department: role === 'interviewer' ? department : 'N/A'
+      });
       navigate('/login');
     } else {
       alert('Please fill in all fields');
@@ -60,6 +71,21 @@ export default function Signup() {
                 placeholder="Full Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="sr-only">
+                Phone Number
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="text"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Phone Number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
             <div>
@@ -180,6 +206,24 @@ export default function Signup() {
                   Selected file: {resume.name}
                 </p>
               )}
+            </div>
+          )}
+
+          {role === 'interviewer' && (
+            <div>
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+                Department
+              </label>
+              <input
+                id="department"
+                name="department"
+                type="text"
+                required={role === 'interviewer'}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+              />
             </div>
           )}
 
