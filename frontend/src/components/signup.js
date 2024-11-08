@@ -5,28 +5,40 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('interviewee');
+  const [user_type, setUsertype] = useState('interviewee');
   const [name, setName] = useState('');
   const [resume, setResume] = useState(null);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send the signup data to your backend
-    // For this example, we'll just simulate a successful signup
-    if (email && password && confirmPassword && name) {
-      if (password !== confirmPassword) {
-        alert("Passwords don't match");
-        return;
+  
+    try {
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('confirm_password', confirmPassword);
+      formData.append('name', name);
+      formData.append('user_type', user_type);
+      if (resume) {
+        formData.append('resume', resume);
       }
-      if (role === 'interviewee' && !resume) {
-        alert("Please upload your resume");
-        return;
+  
+      const response = await fetch('http://localhost:8000/signup', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      if (response.ok) {
+        console.log('Signup successful');
+        navigate('/login');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Error signing up');
       }
-      console.log('Signup successful', { email, name, role, resume: resume ? resume.name : 'N/A' });
-      navigate('/login');
-    } else {
-      alert('Please fill in all fields');
+    } catch (error) {
+      console.error('Error submitting the form:', error);
+      alert('An error occurred. Please try again later.');
     }
   };
 
@@ -119,8 +131,8 @@ export default function Signup() {
                 name="role"
                 type="radio"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                checked={role === 'interviewee'}
-                onChange={() => setRole('interviewee')}
+                checked={user_type === 'interviewee'}
+                onChange={() => setUsertype('interviewee')}
               />
               <label htmlFor="role-interviewee" className="ml-2 block text-sm text-gray-900">
                 Interviewee
@@ -132,8 +144,8 @@ export default function Signup() {
                 name="role"
                 type="radio"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                checked={role === 'interviewer'}
-                onChange={() => setRole('interviewer')}
+                checked={user_type === 'interviewer'}
+                onChange={() => setUsertype('interviewer')}
               />
               <label htmlFor="role-interviewer" className="ml-2 block text-sm text-gray-900">
                 Interviewer
@@ -141,7 +153,7 @@ export default function Signup() {
             </div>
           </div>
 
-          {role === 'interviewee' && (
+          {user_type === 'interviewee' && (
             <div>
               <label htmlFor="resume" className="block text-sm font-medium text-gray-700">
                 Upload Resume (PDF only)

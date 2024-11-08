@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from pydantic import BaseModel
 import mysql.connector as sqltor
 from typing import Optional
@@ -22,24 +22,24 @@ connection = sqltor.connect(
     database="SCHEDULER"
 )
 
-# Check if the connection is established
 if connection.is_connected():
     print("Connected to MySQL database")
 else:
     print("Failed to connect to the database")
 
-# User data model
+# User data model (added phone back)
 class User(BaseModel):
     username: str
     password: str
+    confirm_password: str
     email: str
-    phone: int
-    role: str
+    phone: int  
+    user_type: str  # interviewer or interviewee
 
 class Login(BaseModel):
     email: str
     password: str
-    role: str
+    user_type: str
 
 @app.get('/')
 async def landing():
@@ -47,10 +47,9 @@ async def landing():
 
 @app.post('/login/')
 async def login(user: Login):
-    role = 'FACULTY' if user.role == 'interviewer' else 'CANDIDATE'
+    user_type = 'FACULTY' if user.user_type == 'interviewer' else 'CANDIDATE'
     cursor = connection.cursor(dictionary=True)
-    # Updated query to use email instead of username
-    query = f"SELECT * FROM {role} WHERE email = %s AND password = %s"
+    query = f"SELECT * FROM {user_type} WHERE email = %s AND password = %s"
     cursor.execute(query, (user.email, user.password))
     result = cursor.fetchone()
     cursor.close()
@@ -61,15 +60,10 @@ async def login(user: Login):
     return {"message": f"Welcome back, {result['email']}!"}
 
 @app.post('/signup/')
-async def signup(user: User):
+async def signup(user: User, resume: UploadFile = File(None)):
     cursor = connection.cursor(dictionary=True)
-    if user.role == 'interviewee':
-        role = 'CANDIDATE'
-        
-    else:
-        role = 'FACULTY'
-    # Check if the username, email, or phone already exists
-    query_check = f"SELECT * FROM {role} WHERE name = %s OR email = %s OR phone = %s"
+    user_type = 'FACULTY' if user.user_type == 'interviewer' else 'CANDIDATE'
+    query_check = f"SELECT * FROM {user_type} WHERE email = %s OR email = %s OR phone = %s"
     cursor.execute(query_check, (user.username, user.email, user.phone))
     result = cursor.fetchone()
 
@@ -81,9 +75,20 @@ async def signup(user: User):
         elif result['phone'] == user.phone:
             raise HTTPException(status_code=400, detail="Account with the same Phone Number already exists")
     
-    # Insert the new user into the database
-    query_insert = f"INSERT INTO {role} (name, password, email, phone) VALUES (%s, %s, %s, %s)"
-    cursor.execute(query_insert, (user.username, user.password, user.email, user.phone))
+
+    if user.password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
+    if user.user_type == "interviewee":
+        if not resume:
+            raise HTTPException(status_code=400, detail="Resume is required for interviewees")
+        
+        resume_filename = f"resumes/{user.username}_{resume.filename}"
+        with open(resume_filename, "wb") as file:
+            file.write(await resume.read())
+
+    query_insert = f"INSERT INTO {user_type} (username, password, email, phone, user_type) VALUES (%s, %s, %s, %s, %s)"
+    cursor.execute(query_insert, (user.username, user.password, user.email, user.phone, user.user_type))
     connection.commit()
     cursor.close()
     

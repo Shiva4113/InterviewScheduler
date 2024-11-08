@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('interviewee');
+  const [user_type, setUsertype] = useState('interviewee');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -18,13 +18,13 @@ export default function Login() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email, password, role })
+          body: JSON.stringify({ email, password, user_type })
         });
   
         const data = await response.json();
         
         if (response.ok) {
-          if (role === 'interviewee') {
+          if (user_type === 'interviewee') {
             navigate('/interviewee');
           } else {
             navigate('/interviewer');
@@ -93,8 +93,8 @@ export default function Login() {
                 name="role"
                 type="radio"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                checked={role === 'interviewee'}
-                onChange={() => setRole('interviewee')}
+                checked={user_type === 'interviewee'}
+                onChange={() => setUsertype('interviewee')}
               />
               <label htmlFor="role-interviewee" className="ml-2 block text-sm text-gray-900">
                 Interviewee
@@ -106,8 +106,8 @@ export default function Login() {
                 name="role"
                 type="radio"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                checked={role === 'interviewer'}
-                onChange={() => setRole('interviewer')}
+                checked={user_type === 'interviewer'}
+                onChange={() => setUsertype('interviewer')}
               />
               <label htmlFor="role-interviewer" className="ml-2 block text-sm text-gray-900">
                 Interviewer
