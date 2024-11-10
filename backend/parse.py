@@ -2,14 +2,19 @@ from processing_utils import get_embed_model, get_llm, load_document, parse_node
 
 def process_resume(file_path, llm, embed_model):
     try:
+        llm = get_llm()
+        embed_model = get_embed_model()
         documents = load_document([file_path])
         nodes = parse_nodes(documents)
         index = create_index(nodes, embed_model)
         query_engine = create_query_engine(index, llm)
 
-        response = query_engine.query('''Extract the full name, email address, and phone number from the resume.
-                                        Also extract the years of experience, experience details, publications, education, projects with some detail, publications, projects and skills of the individual. 
-                                        While extracting the full name, please don't take their qualification into account.''')
+        education = query_engine.query('''Give me only the user's education details.''')
+        work = query_engine.query('''Give me only the user's work experience details.''')
+        skills = query_engine.query('''Give me only the user's skill-set related details.''')
+        publications = query_engine.query('''Give me only the user's publications details if any.''')
+        response = [education.response,work.response,skills.response,publications.response]
+
         return response
     except Exception as e:
         return f"Error processing {file_path}: {str(e)}"
