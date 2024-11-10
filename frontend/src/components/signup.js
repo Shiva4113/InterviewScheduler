@@ -7,12 +7,20 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [user_type, setUsertype] = useState('interviewee');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [resume, setResume] = useState(null);
+  const [department, setDepartment] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
+    // Validation checks
+    if (user_type === 'interviewer' && !department) {
+      alert("Please select your department");
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('email', email);
@@ -20,25 +28,38 @@ export default function Signup() {
       formData.append('confirm_password', confirmPassword);
       formData.append('name', name);
       formData.append('user_type', user_type);
+      formData.append('phone', phone);
+      
+      if (user_type === 'interviewer') {
+        formData.append('department', department);
+      }
+      
       if (resume) {
         formData.append('resume', resume);
       }
-  
+
       const response = await fetch('http://localhost:8000/signup', {
         method: 'POST',
         body: formData,
       });
-  
+
       if (response.ok) {
-        console.log('Signup successful');
+        console.log('Signup successful', { 
+          email, 
+          name, 
+          phone,
+          user_type, 
+          resume: resume ? resume.name : 'N/A',
+          department: user_type === 'interviewer' ? department : 'N/A'
+        });
         navigate('/login');
       } else {
         const data = await response.json();
         alert(data.error || 'Error signing up');
       }
     } catch (error) {
-      console.error('Error submitting the form:', error);
-      alert('An error occurred. Please try again later.');
+      console.error('Error during signup:', error);
+      alert('An error occurred during signup');
     }
   };
 
@@ -48,6 +69,8 @@ export default function Signup() {
       setResume(file);
     }
   };
+
+  // ... rest of your component code
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -72,6 +95,21 @@ export default function Signup() {
                 placeholder="Full Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="sr-only">
+                Phone Number
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="text"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Phone Number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
             <div>
@@ -192,6 +230,24 @@ export default function Signup() {
                   Selected file: {resume.name}
                 </p>
               )}
+            </div>
+          )}
+
+          {user_type === 'interviewer' && (
+            <div>
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+                Department
+              </label>
+              <input
+                id="department"
+                name="department"
+                type="text"
+                required={user_type === 'interviewer'}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+              />
             </div>
           )}
 
