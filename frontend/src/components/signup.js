@@ -2,43 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function Signup() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('interviewee');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState(''); // New phone state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+    role: 'interviewee',
+    gender: '',
+    department: ''
+  });
   const [resume, setResume] = useState(null);
-  const [department, setDepartment] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (email && password && confirmPassword && name && phone) {
-      if (password !== confirmPassword) {
-        alert("Passwords don't match");
-        return;
-      }
-      if (role === 'interviewee' && !resume) {
-        alert("Please upload your resume");
-        return;
-      }
-      if (role === 'interviewer' && !department) {
-        alert("Please select your department");
-        return;
-      }
-      console.log('Signup successful', { 
-        email, 
-        name, 
-        phone, // Include phone number in the console output
-        role, 
-        resume: resume ? resume.name : 'N/A',
-        department: role === 'interviewer' ? department : 'N/A'
-      });
-      navigate('/login');
-    } else {
-      alert('Please fill in all fields');
-    }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
   };
 
   const handleResumeChange = (e) => {
@@ -46,6 +28,20 @@ export default function Signup() {
     if (file) {
       setResume(file);
     }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords don't match");
+      return;
+    }
+    if (formData.role === 'interviewee' && !resume) {
+      alert("Please upload your resume");
+      return;
+    }
+    console.log('Signup successful', { ...formData, resume: resume ? resume.name : 'N/A' });
+    navigate('/login');
   };
 
   return (
@@ -69,23 +65,8 @@ export default function Signup() {
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="phone" className="sr-only">
-                Phone Number
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Phone Number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                value={formData.name}
+                onChange={handleChange}
               />
             </div>
             <div>
@@ -100,8 +81,8 @@ export default function Signup() {
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={handleChange}
               />
             </div>
             <div>
@@ -116,8 +97,8 @@ export default function Signup() {
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
               />
             </div>
             <div>
@@ -126,16 +107,32 @@ export default function Signup() {
               </label>
               <input
                 id="confirm-password"
-                name="confirm-password"
+                name="confirmPassword"
                 type="password"
                 autoComplete="new-password"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={formData.confirmPassword}
+                onChange={handleChange}
               />
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              Phone Number
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="Phone Number"
+              value={formData.phone}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="flex items-center justify-between">
@@ -145,8 +142,8 @@ export default function Signup() {
                 name="role"
                 type="radio"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                checked={role === 'interviewee'}
-                onChange={() => setRole('interviewee')}
+                checked={formData.role === 'interviewee'}
+                onChange={() => setFormData(prev => ({ ...prev, role: 'interviewee' }))}
               />
               <label htmlFor="role-interviewee" className="ml-2 block text-sm text-gray-900">
                 Interviewee
@@ -158,8 +155,8 @@ export default function Signup() {
                 name="role"
                 type="radio"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                checked={role === 'interviewer'}
-                onChange={() => setRole('interviewer')}
+                checked={formData.role === 'interviewer'}
+                onChange={() => setFormData(prev => ({ ...prev, role: 'interviewer' }))}
               />
               <label htmlFor="role-interviewer" className="ml-2 block text-sm text-gray-900">
                 Interviewer
@@ -167,7 +164,47 @@ export default function Signup() {
             </div>
           </div>
 
-          {role === 'interviewee' && (
+          <div>
+            <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+              Gender
+            </label>
+            <select
+              id="gender"
+              name="gender"
+              required
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              value={formData.gender}
+              onChange={handleChange}
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {formData.role === 'interviewer' && (
+            <div>
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+                Department
+              </label>
+              <select
+                id="department"
+                name="department"
+                required
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                value={formData.department}
+                onChange={handleChange}
+              >
+                <option value="">Select department</option>
+                <option value="CSE">CSE</option>
+                <option value="ECE">ECE</option>
+                <option value="EEE">EEE</option>
+              </select>
+            </div>
+          )}
+
+          {formData.role === 'interviewee' && (
             <div>
               <label htmlFor="resume" className="block text-sm font-medium text-gray-700">
                 Upload Resume (PDF only)
@@ -206,24 +243,6 @@ export default function Signup() {
                   Selected file: {resume.name}
                 </p>
               )}
-            </div>
-          )}
-
-          {role === 'interviewer' && (
-            <div>
-              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
-                Department
-              </label>
-              <input
-                id="department"
-                name="department"
-                type="text"
-                required={role === 'interviewer'}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-              />
             </div>
           )}
 
