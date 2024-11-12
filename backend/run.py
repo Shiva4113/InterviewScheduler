@@ -22,7 +22,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password="root",
+    password=os.getenv('SQL_PSWD'),
     database="SCHEDULER"
 )
 
@@ -34,7 +34,8 @@ else:
 
 llm = get_llm()
 embed_model = get_embed_model()
-class User(BaseModel):
+class UserSignup(BaseModel):
+    name: str
     email: str
     password: str
     confirm_password: str
@@ -68,7 +69,7 @@ async def login(user: Login):
     return {"message": f"Welcome back, {result['email']}!"}
 
 @app.post('/signup/')
-async def signup(user: User, resume: Optional[UploadFile] = File(None)):
+async def signup(user: UserSignup, resume: Optional[UploadFile] = File(None)):
     if user.password != user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
