@@ -9,6 +9,7 @@ from processing_utils import get_embed_model, get_llm
 from passlib.hash import bcrypt
 
 app = FastAPI()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app.add_middleware(
     CORSMiddleware,
