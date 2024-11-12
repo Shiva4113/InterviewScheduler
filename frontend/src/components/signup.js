@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -13,6 +14,8 @@ export default function Signup() {
     department: ''
   });
   const [resume, setResume] = useState(null);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -30,18 +33,45 @@ export default function Signup() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match");
+      setError("Passwords don't match");
+      setIsLoading(false);
       return;
     }
-    if (formData.role === 'interviewee' && !resume) {
-      alert("Please upload your resume");
-      return;
+
+    const formDataToSend = new FormData();
+    Object.entries(formData).forEach(([key, value]) => {
+      formDataToSend.append(key, value);
+    });
+
+    if (formData.role === 'interviewee' && resume) {
+      formDataToSend.append('resume', resume);
     }
-    console.log('Signup successful', { ...formData, resume: resume ? resume.name : 'N/A' });
-    navigate('/login');
+
+    try {
+      const response = await axios.post('http://localhost:8000/signup/', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.message === "Signup successful") {
+        navigate('/login');
+      }
+    } catch (error) {
+      if (error.response) {
+        setError(error.response.data.detail || 'An error occurred during signup');
+      } else {
+        setError('An error occurred during signup');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,6 +82,11 @@ export default function Signup() {
             Create your account
           </h2>
         </div>
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
@@ -250,8 +285,9 @@ export default function Signup() {
             <button
               type="submit"
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isLoading}
             >
-              Sign up
+              {isLoading ? 'Signing up...' : 'Sign up'}
             </button>
           </div>
         </form>

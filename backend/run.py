@@ -22,7 +22,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password="root",
+    password=os.getenv('SQL_PSWD'),
     database="SCHEDULER"
 )
 
@@ -34,14 +34,15 @@ else:
 
 llm = get_llm()
 embed_model = get_embed_model()
-class User(BaseModel):
+class UserSignup(BaseModel):
+    name: str
     email: str
     password: str
-    confirm_password: str
-    phone: str  
-    user_type: str  
-    name: str
-    department : Optional[str] = None
+    confirmPassword: str
+    phone: str
+    role: str
+    gender: str
+    department: Optional[str] = None
 
 class Login(BaseModel):
     email: str
@@ -67,28 +68,54 @@ async def login(user: Login):
     return {"message": f"Welcome back, {result['email']}!"}
 
 @app.post('/signup/')
-async def signup(user: User, resume : Optional[str] = None):
+async def signup(user: UserSignup, resume: Optional[UploadFile] = File(None)):
     cursor = connection.cursor(dictionary=True)
     
-    # Check if the username, email, or phone already exists
-    query_check = "SELECT * FROM candidate WHERE name = %s OR email = %s OR phone = %s"
-    cursor.execute(query_check, (user.name, user.email, user.phone))
-    result = cursor.fetchone()
-    if result:
-        if result['name'] == user.name:
-            raise HTTPException(status_code=400, detail="name already exists")
-        elif result['email'] == user.email:
-            raise HTTPException(status_code=400, detail="Account with the same Email ID already exists")
-        elif result['phone'] == user.phone:
-            raise HTTPException(status_code=400, detail="Account with the same Phone Number already exists")
-    
-    # Insert the new user into the database
-    query_insert = "INSERT INTO candidate (name, password, email, phone) VALUES (%s, %s, %s, %s)"
-    cursor.execute(query_insert, (user.name, user.password, user.email, user.phone))
-    connection.commit()
-    cursor.close()
-    
-    return {"message": f"User {user.name} created successfully"}
+    try:
+        # Check if passwords match
+        if user.password != user.confirmPassword:
+            raise HTTPException(status_code=400, detail="Passwords do not match")
+        
+        # Check if the email already exists
+        query_check = "SELECT * FROM users WHERE email = %s"
+        cursor.execute(query_check, (user.email,))
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail="Account with this email already exists")
+        
+        # Hash the password
+        hashed_password = bcrypt.hash(user.password)
+        
+        # Determine the table based on the role
+        table = 'FACULTY' if user.role == 'interviewer' else 'CANDIDATE'
+        
+        # Prepare the query
+        if user.role == 'interviewer':
+            if not user.department:
+                raise HTTPException(status_code=400, detail="Department is required for interviewers")
+            query = f"INSERT INTO {table} (name, email, password, phone, gender, department) VALUES (%s, %s, %s, %s, %s, %s)"
+            values = (user.name, user.email, hashed_password, user.phone, user.gender, user.department)
+        else:
+            if not resume:
+                raise HTTPException(status_code=400, detail="Resume is required for interviewees")
+            # Process and save resume here
+            resume_path = f"resumes/{user.email}_{resume.filename}"
+            with open(resume_path, "wb") as buffer:
+                content = await resume.read()
+                buffer.write(content)
+            query = f"INSERT INTO {table} (name, email, password, phone, gender, resume_path) VALUES (%s, %s, %s, %s, %s, %s)"
+            values = (user.name, user.email, hashed_password, user.phone, user.gender, resume_path)
+        
+        # Execute the query
+        cursor.execute(query, values)
+        connection.commit()
+        
+        return {"message": "Signup successful"}
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    finally:
+        cursor.close()
 
 
 
