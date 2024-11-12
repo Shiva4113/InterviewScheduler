@@ -12,37 +12,38 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    try {
-      // Make a POST request to the backend with email, password, and user_type
-      const response = await axios.post('http://127.0.0.1:8000/login/', {
-        email,
-        password,
-        user_type
-      });
-
-      // Check if the response contains the user details
-      if (response.data && response.data.id && response.data.name) {
-        console.log('Login successful:', response.data);
-
-        // Store user details (id and name) in local storage or a global state
-        localStorage.setItem('user_id', response.data.id);
-        localStorage.setItem('user_name', response.data.name);
-
-        // Redirect based on user type
-        if (user_type === 'interviewee') {
-          navigate('/interviewee');
+    if (email && password) {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password, user_type })
+        });
+  
+        const data = await response.json();
+        
+        if (response.ok) {
+          sessionStorage.setItem('userName', data.name);
+          sessionStorage.setItem('userId', data.id);
+          sessionStorage.setItem('userType', user_type);
+          sessionStorage.setItem('userEmail', email);
+          
+          if (user_type === 'interviewee') {
+            navigate('/interviewee');
+          } else {
+            navigate('/interviewer');
+          }
         } else {
-          navigate('/interviewer');
+          setError(data.message || 'Login failed. Please try again.');
         }
-      } else {
-        setError('Unexpected response from server.');
-        alert('Unexpected response from server. Please try again.');
+      } catch (err) {
+        console.error('Login failed:', err);
+        setError('An error occurred. Please try again later.');
       }
-    } catch (err) {
-      console.error('Login failed:', err);
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials and try again.');
-      alert(err.response?.data?.detail || 'Login failed. Please check your credentials and try again.');
+    } else {
+      setError('Please enter both email and password');
     }
   };
 

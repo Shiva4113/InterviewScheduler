@@ -7,7 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from parse import process_resume
 from processing_utils import get_embed_model, get_llm
 from passlib.hash import bcrypt
-
+import tempfile
+from pathlib import Path
+import nest_asyncio
+nest_asyncio.apply()
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -23,7 +26,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password=os.getenv('SQL_PSWD'),
+    password='root',
     database="SCHEDULER"
 )
 
@@ -35,15 +38,15 @@ else:
 
 llm = get_llm()
 embed_model = get_embed_model()
+
 class UserSignup(BaseModel):
     name: str
     email: str
     password: str
-    confirmPassword: str
-    phone: str
-    role: str
+    confirm_password: str
+    phone: str  
+    user_type: str
     gender: str
-    department: Optional[str] = None
 
 class Login(BaseModel):
     email: str
@@ -66,244 +69,113 @@ async def login(user: Login):
     if not result:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    return {"message": f"Welcome back, {result['email']}!"}
+    return {
+  "name": result['Name'],
+  "id": result['faculty_id'] if user.user_type == 'interviewer' else result['candidate_id'],
+  "message": f"Welcome back {result['Name']}"
+}
+
+async def signup_logic(user: UserSignup, resume: UploadFile):
+    if user.password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
+    cursor = connection.cursor(dictionary=True)
+    print("Something works!")
 
 @app.post('/signup/')
-async def signup(user: UserSignup, resume: Optional[UploadFile] = File(None)):
+async def signup(    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    phone: str = Form(...),
+    user_type: str = Form(...),
+    gender: str = Form(...),
+    department: str = None,
+    resume: Optional[UploadFile] = File(None)):
+    if password != confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
     cursor = connection.cursor(dictionary=True)
-    
     try:
-        # Check if passwords match
-        if user.password != user.confirmPassword:
-            raise HTTPException(status_code=400, detail="Passwords do not match")
-        
-        # Check if the email already exists
-        query_check = "SELECT * FROM users WHERE email = %s"
-        cursor.execute(query_check, (user.email,))
-        if cursor.fetchone():
-            raise HTTPException(status_code=400, detail="Account with this email already exists")
-        
-        # Hash the password
-        hashed_password = bcrypt.hash(user.password)
-        
-        # Determine the table based on the role
-        table = 'FACULTY' if user.role == 'interviewer' else 'CANDIDATE'
-        
-        # Prepare the query
-        if user.role == 'interviewer':
-            if not user.department:
-                raise HTTPException(status_code=400, detail="Department is required for interviewers")
-            query = f"INSERT INTO {table} (name, email, password, phone, gender, department) VALUES (%s, %s, %s, %s, %s, %s)"
-            values = (user.name, user.email, hashed_password, user.phone, user.gender, user.department)
-        else:
+        # Check if the user already exists
+        query_check = "SELECT * FROM {} WHERE email = %s OR Phone = %s"
+        table = 'faculty' if user_type == 'interviewer' else 'candidate'
+        cursor.execute(query_check.format(table), (email, phone))
+        result = cursor.fetchone()
+
+        if result:
+            if result['email'] == email:
+                raise HTTPException(status_code=400, detail="Account with this email already exists")
+            elif result['Phone'] == phone:
+                raise HTTPException(status_code=400, detail="Account with this phone number already exists")
+
+        # Process resume for interviewees
+        education = experience = skills = publications = None
+        if user_type == 'interviewee':
             if not resume:
                 raise HTTPException(status_code=400, detail="Resume is required for interviewees")
-            # Process and save resume here
-            resume_path = f"resumes/{user.email}_{resume.filename}"
-            with open(resume_path, "wb") as buffer:
-                content = await resume.read()
-                buffer.write(content)
-            query = f"INSERT INTO {table} (name, email, password, phone, gender, resume_path) VALUES (%s, %s, %s, %s, %s, %s)"
-            values = (user.name, user.email, hashed_password, user.phone, user.gender, resume_path)
-        
-        # Execute the query
-        cursor.execute(query, values)
+            
+            # Create temp directory if not exists
+            temp_dir = Path("temp_resumes")
+            temp_dir.mkdir(exist_ok=True)
+            
+            # Generate unique filename
+            temp_file = temp_dir / f"resume_{email}_{resume.filename}"
+            
+            try:
+                # Save uploaded file
+                with open(temp_file, "wb") as buffer:
+                    content = await resume.read()
+                    buffer.write(content)
+                
+                # Process resume with filepath
+                parsed_data = await process_resume(str(temp_file), llm, embed_model)
+                education = parsed_data[0]
+                experience = parsed_data[1]
+                skills = parsed_data[2]
+                publications = parsed_data[3]
+            
+            finally:
+                # Cleanup temp file
+                if temp_file.exists():
+                    temp_file.unlink()
+                    
+        # Insert the new user into the database
+        if user_type == 'interviewer':
+            query_insert = """
+                INSERT INTO faculty (Name, Phone, password, email, Gender, Department)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query_insert, (name, phone, password, email, gender, department))
+        else:
+            query_insert = """
+                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications))
+
         connection.commit()
-        
-        return {"message": "Signup successful"}
-    except HTTPException as http_exc:
-        raise http_exc
+        return {"message": f"User {name} created successfully"}
+
     except Exception as e:
+        connection.rollback()
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     finally:
         cursor.close()
 
 
 
+@app.post('/timeslot/')
+async def timeslot(
+    email: str, role: str, date:str, time:str
+):
+
+    pass
 
 
 
 
 
-
-
-
-
-
-
-
-# @app.post('/signup/')
-# async def signup(
-#     user: User,
-#     # resume: Optional[UploadFile] = File(None)
-# ):
-#     resume = None
-#     # Password validation
-#     if user.password != user.confirm_password:
-#         raise HTTPException(status_code=400, detail="Passwords do not match")
-    
-#     # Hash password before storing
-#     hashed_password = bcrypt.hash(user.password)
-    
-#     # Database setup
-#     try:
-#         cursor = connection.cursor(dictionary=True)
-#         table = 'FACULTY' if user.user_type == 'interviewer' else 'CANDIDATE'
-
-#         # Check for existing user
-#         query_check = f"SELECT * FROM {table} WHERE email = %s OR phone = %s"
-#         cursor.execute(query_check, (user.email, user.phone))
-#         result = cursor.fetchone()
-
-#         if result:
-#             if result['email'] == user.email:
-#                 raise HTTPException(status_code=400, detail="Account with this email already exists")
-#             elif result['phone'] == user.phone:
-#                 raise HTTPException(status_code=400, detail="Account with this phone number already exists")
-
-#         # Validate requirements based on user type
-#         if user.user_type == 'interviewer' and not user.department:
-#             raise HTTPException(status_code=400, detail="Department is required for interviewers")
-#         elif user.user_type == 'candidate' and not resume:
-#             raise HTTPException(status_code=400, detail="Resume is required for candidates")
-
-#         # Create resumes directory if it doesn't exist
-#         if not os.path.exists('resumes'):
-#             os.makedirs('resumes')
-
-#         # Save resume file if provided
-#         resume_path = None
-#         if resume:
-#             # Sanitize filename
-#             safe_filename = ''.join(c for c in resume.filename if c.isalnum() or c in ('-', '_', '.'))
-#             resume_path = f"resumes/{user.email}_{safe_filename}"
-            
-#             try:
-#                 with open(resume_path, "wb") as buffer:
-#                     content = await resume.read()
-#                     buffer.write(content)
-#             except Exception as e:
-#                 raise HTTPException(status_code=500, detail=f"Error saving resume: {str(e)}")
-
-#         # Insert new user
-#         try:
-#             if user.user_type == 'interviewer':
-#                 query_insert = f"""
-#                     INSERT INTO {table} 
-#                     (name, email, password, phone, department) 
-#                     VALUES (%s, %s, %s, %s, %s)
-#                 """
-#                 values = (user.name, user.email, hashed_password, user.phone, user.department)
-#             else:
-#                 query_insert = f"""
-#                     INSERT INTO {table} 
-#                     (name, email, password, phone, resume_path) 
-#                     VALUES (%s, %s, %s, %s, %s)
-#                 """
-#                 values = (user.name, user.email, hashed_password, user.phone, resume_path)
-            
-#             cursor.execute(query_insert, values)
-#             connection.commit()
-#             return {"message": "Signup successful"}
-
-#         except Exception as e:
-#             # If database insert fails, clean up the uploaded file
-#             if resume_path and os.path.exists(resume_path):
-#                 os.remove(resume_path)
-#             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
-    
-#     finally:
-#         if 'cursor' in locals():
-#             cursor.close()
-
-# @app.get('/calendar')
-# def get_calendar_events(faculty_id: Optional[int] = None):
-#     cursor = connection.cursor(dictionary=True)
-#     try:
-#         if faculty_id:
-#             query = """
-#                 SELECT 
-#                     schedule_id, 
-#                     DATE_FORMAT(date, '%Y-%m-%d') AS date, 
-#                     TIME_FORMAT(time, '%H:%i') AS time, 
-#                     faculty_id, 
-#                     IFNULL(CANDIDATE.name, FACULTY.name) AS name,
-#                     IFNULL(CANDIDATE.position, FACULTY.department) AS position 
-#                 FROM faculty_schedule 
-#                 LEFT JOIN CANDIDATE ON faculty_schedule.faculty_id = CANDIDATE.candidate_id 
-#                 LEFT JOIN FACULTY ON faculty_schedule.faculty_id = FACULTY.faculty_id 
-#                 WHERE faculty_schedule.faculty_id = %s
-#             """
-#             cursor.execute(query, (faculty_id,))
-#         else:
-#             query = """
-#                 SELECT 
-#                     schedule_id, 
-#                     DATE_FORMAT(date, '%Y-%m-%d') AS date, 
-#                     TIME_FORMAT(time, '%H:%i') AS time, 
-#                     faculty_id, 
-#                     IFNULL(CANDIDATE.name, FACULTY.name) AS name,
-#                     IFNULL(CANDIDATE.position, FACULTY.department) AS position 
-#                 FROM faculty_schedule 
-#                 LEFT JOIN CANDIDATE ON faculty_schedule.faculty_id = CANDIDATE.candidate_id 
-#                 LEFT JOIN FACULTY ON faculty_schedule.faculty_id = FACULTY.faculty_id
-#             """
-#             cursor.execute(query)
-#         return cursor.fetchall()
-#     finally:
-#         cursor.close()
-
-# @app.post('/schedule-interview')
-# async def schedule_interview(
-#     faculty_id: int = Form(...),
-#     date: str = Form(...),
-#     time: str = Form(...),
-#     candidate_id: int = Form(...)
-# ):
-#     cursor = connection.cursor()
-#     try:
-#         # First check if the slot is available
-#         check_query = "SELECT * FROM faculty_schedule WHERE faculty_id = %s AND date = %s AND time = %s"
-#         cursor.execute(check_query, (faculty_id, date, time))
-#         if cursor.fetchone():
-#             raise HTTPException(status_code=400, detail="This time slot is already booked")
-
-#         # Schedule the interview
-#         query = "INSERT INTO faculty_schedule (faculty_id, date, time) VALUES (%s, %s, %s)"
-#         cursor.execute(query, (faculty_id, date, time))
-#         schedule_id = cursor.lastrowid
-        
-#         # Update candidate's scheduled interview
-#         query = "UPDATE CANDIDATE SET scheduled_interview = %s WHERE candidate_id = %s"
-#         cursor.execute(query, (schedule_id, candidate_id))
-        
-#         connection.commit()
-#         return {"message": "Interview scheduled successfully"}
-#     except Exception as e:
-#         connection.rollback()
-#         raise HTTPException(status_code=500, detail=str(e))
-#     finally:
-#         cursor.close()
-
-# @app.post('/complete-interview')
-# async def complete_interview(schedule_id: int = Form(...)):
-#     cursor = connection.cursor()
-#     try:
-#         # Mark interview as completed
-#         query = "UPDATE CANDIDATE SET interview_completed = 1 WHERE scheduled_interview = %s"
-#         cursor.execute(query, (schedule_id,))
-        
-#         # Remove from schedule
-#         query = "DELETE FROM faculty_schedule WHERE schedule_id = %s"
-#         cursor.execute(query, (schedule_id,))
-        
-#         connection.commit()
-#         return {"message": "Interview marked as completed"}
-#     except Exception as e:
-#         connection.rollback()
-#         raise HTTPException(status_code=500, detail=str(e))
-#     finally:
-#         cursor.close()
+@app.post('/resume/')
+async def resumexd(file: UploadFile):
+    return {"filename": file.filename}

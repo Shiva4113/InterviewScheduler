@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -35,42 +34,48 @@ export default function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
+    
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match");
       setIsLoading(false);
       return;
     }
-
-    const formDataToSend = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      formDataToSend.append(key, value);
-    });
-
-    if (formData.role === 'interviewee' && resume) {
-      formDataToSend.append('resume', resume);
+  
+    if (formData.role === 'interviewee' && !resume) {
+      alert("Please upload your resume");
+      return;
     }
-
+  
     try {
-      const response = await axios.post('http://localhost:8000/signup/', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('confirm_password', formData.confirmPassword);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('user_type', formData.role);
+      formDataToSend.append('gender', formData.gender);
+      
+      if (resume) {
+        formDataToSend.append('resume', resume);
+      }
+  
+      const response = await fetch('http://localhost:8000/signup', {
+        method: 'POST',
+        body: formDataToSend,
       });
-
-      if (response.data.message === "Signup successful") {
-        navigate('/login');
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Signup failed');
       }
+  
+      const data = await response.json();
+      console.log('Signup successful', data);
+      navigate('/login');
     } catch (error) {
-      if (error.response) {
-        setError(error.response.data.detail || 'An error occurred during signup');
-      } else {
-        setError('An error occurred during signup');
-      }
-    } finally {
-      setIsLoading(false);
+      console.error('Error during signup:', error);
+      alert(error.message || 'Failed to signup. Please try again.');
     }
   };
 

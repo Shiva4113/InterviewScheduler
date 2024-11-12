@@ -4,15 +4,19 @@ import { Menu, Transition, Dialog } from '@headlessui/react'
 import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom';
 
 export default function InterviewerPortal() {
-  const [userName, setUserName] = useState("Dr. Jane Smith")
-  const [position, setPosition] = useState("Associate Professor of Computer Science")
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedCandidate, setSelectedCandidate] = useState(null)
-  const [freeSlots, setFreeSlots] = useState([])
-  const [newSlotDate, setNewSlotDate] = useState('')
-  const [newSlotTime, setNewSlotTime] = useState('')
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState("");
+  const [userType, setUserType] = useState("");
+  const [userId, setUserId] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [freeSlots, setFreeSlots] = useState([]);
+  const [newSlotDate, setNewSlotDate] = useState('');
+  const [newSlotTime, setNewSlotTime] = useState('');
+  const [position, setPosition] = useState("");
 
   const upcomingInterviews = [
     { id: 1, name: "John Doe", position: "Assistant Professor", date: "June 15, 2023", time: "2:00 PM" },
@@ -21,10 +25,21 @@ export default function InterviewerPortal() {
   ]
 
   useEffect(() => {
-    // Fetch free slots from the backend
+    // Get user data from sessionStorage
+    const storedName = sessionStorage.getItem('userName');
+    const storedType = sessionStorage.getItem('userType');
+    const storedId = sessionStorage.getItem('userId');
+    const storedPosition = sessionStorage.getItem('department'); 
+    
+    if (storedName) setUserName(storedName);
+    if (storedType) setUserType(storedType);
+    if (storedId) setUserId(storedId);
+    if (storedPosition) setPosition(storedPosition); 
+
+    // Fetch free slots 
     const fetchFreeSlots = async () => {
       try {
-        const response = await axios.get('/free-slots');
+        const response = await axios.get(`/free-slots/${storedId}`);
         setFreeSlots(response.data);
       } catch (error) {
         console.error('Error fetching free slots:', error);
@@ -64,6 +79,13 @@ export default function InterviewerPortal() {
     setIsModalOpen(true);
   };
 
+  const handleLogout = () => {
+    // Clear all session data
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow">
@@ -73,7 +95,7 @@ export default function InterviewerPortal() {
             <Menu.Button className="inline-flex justify-center items-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
               <User className="h-5 w-5 mr-2" />
               <span>{userName}</span>
-              <ChevronDown className="h-4 w-4 ml-2" />
+              <ChevronDown className="h-5 w-5 ml-2" />
             </Menu.Button>
             <Transition
               as={Fragment}
@@ -111,8 +133,9 @@ export default function InterviewerPortal() {
                   <Menu.Item>
                     {({ active }) => (
                       <button
+                        onClick={handleLogout}
                         className={`${
-                          active ? 'bg-indigo-500 text-white' : 'text-gray-900'
+                          active ? 'bg-red-500 text-white' : 'text-gray-900'
                         } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
                       >
                         Logout
