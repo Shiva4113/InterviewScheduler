@@ -30,18 +30,61 @@ export default function Signup() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords don't match");
       return;
     }
+  
     if (formData.role === 'interviewee' && !resume) {
       alert("Please upload your resume");
       return;
     }
-    console.log('Signup successful', { ...formData, resume: resume ? resume.name : 'N/A' });
-    navigate('/login');
+  
+    try {
+      // Create form data for the request
+      const formDataToSend = new FormData();
+      
+      // Create user data object
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        confirm_password: formData.confirmPassword,
+        phone: formData.phone,
+        user_type: formData.role,
+        gender: formData.gender,
+        department: formData.department
+      };
+  
+      // Append user data as a string
+      formDataToSend.append('user', JSON.stringify(userData));
+      
+      // Append resume if it exists
+      if (resume) {
+        formDataToSend.append('resume', resume);
+      }
+  
+      const response = await fetch('http://localhost:8000/signup', {
+        method: 'POST',
+        // Remove the Content-Type header to let the browser set it automatically with the boundary
+        body: formDataToSend,
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Signup failed');
+      }
+  
+      const data = await response.json();
+      console.log('Signup successful', data);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error during signup:', error);
+      alert(error.message || 'Failed to signup. Please try again.');
+    }
   };
 
   return (

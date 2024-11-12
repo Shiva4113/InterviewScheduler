@@ -42,6 +42,7 @@ class User(BaseModel):
     user_type: str  
     name: str
     department : Optional[str] = None
+    gender: str
 
 class Login(BaseModel):
     email: str
@@ -67,28 +68,58 @@ async def login(user: Login):
     return {"message": f"Welcome back, {result['email']}!"}
 
 @app.post('/signup/')
-async def signup(user: User, resume : Optional[str] = None):
+async def signup(user: User, resume: Optional[UploadFile] = File(None)):
+    if user.password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
     cursor = connection.cursor(dictionary=True)
-    
-    # Check if the username, email, or phone already exists
-    query_check = "SELECT * FROM candidate WHERE name = %s OR email = %s OR phone = %s"
-    cursor.execute(query_check, (user.name, user.email, user.phone))
-    result = cursor.fetchone()
-    if result:
-        if result['name'] == user.name:
-            raise HTTPException(status_code=400, detail="name already exists")
-        elif result['email'] == user.email:
-            raise HTTPException(status_code=400, detail="Account with the same Email ID already exists")
-        elif result['phone'] == user.phone:
-            raise HTTPException(status_code=400, detail="Account with the same Phone Number already exists")
-    
-    # Insert the new user into the database
-    query_insert = "INSERT INTO candidate (name, password, email, phone) VALUES (%s, %s, %s, %s)"
-    cursor.execute(query_insert, (user.name, user.password, user.email, user.phone))
-    connection.commit()
-    cursor.close()
-    
-    return {"message": f"User {user.name} created successfully"}
+    try:
+        # Check if the user already exists
+        query_check = "SELECT * FROM {} WHERE email = %s OR Phone = %s"
+        table = 'faculty' if user.user_type == 'interviewer' else 'candidate'
+        cursor.execute(query_check.format(table), (user.email, user.phone))
+        result = cursor.fetchone()
+
+        if result:
+            if result['email'] == user.email:
+                raise HTTPException(status_code=400, detail="Account with this email already exists")
+            elif result['Phone'] == user.phone:
+                raise HTTPException(status_code=400, detail="Account with this phone number already exists")
+
+        # Process resume for interviewees
+        education = experience = skills = publications = None
+        if user.user_type == 'interviewee':
+            if not resume:
+                raise HTTPException(status_code=400, detail="Resume is required for interviewees")
+            resume_content = await resume.read()
+            parsed_data = process_resume(resume_content,llm,embed_model)
+            education = parsed_data.get('education', '')
+            experience = parsed_data.get('experience', '')
+            skills = parsed_data.get('skills', '')
+            publications = parsed_data.get('publications', '')
+            print(publications)
+        # Insert the new user into the database
+        if user.user_type == 'interviewer':
+            query_insert = """
+                INSERT INTO faculty (Name, Phone, password, email, Gender, Department)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query_insert, (user.name, user.phone, user.password, user.email, user.gender, user.department))
+        else:
+            query_insert = """
+                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query_insert, (user.name, user.phone, user.password, user.email, user.gender, education, experience, skills, publications))
+
+        connection.commit()
+        return {"message": f"User {user.name} created successfully"}
+
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    finally:
+        cursor.close()
 
 
 
