@@ -1,5 +1,5 @@
-import React, { useState, Fragment } from 'react';
-import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Clock } from 'lucide-react';
+import React, { useState, useEffect, Fragment } from 'react';
+import { Calendar, ChevronDown, User, Clock } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -12,11 +12,23 @@ import {
 } from "./ui/dialog";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
+import { useNavigate } from 'react-router-dom';
 
 export default function CollegeInterviewPortal() {
-  const [userName, setUserName] = useState("John Doe");
-  const [position, setPosition] = useState("Assistant Professor of Computer Science");
+  const [userName, setUserName] = useState("");
+  const [userType, setUserType] = useState("");
+  const [position, setPosition] = useState("Interviewee");
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Get user data from sessionStorage
+    const storedName = sessionStorage.getItem('userName');
+    const storedType = sessionStorage.getItem('userType');
+    
+    if (storedName) setUserName(storedName);
+    if (storedType) setUserType(storedType);
+  }, []); // Empty dependency array means this runs once on mount
 
   const availableSlots = [
     { id: 1, date: "June 15, 2023", time: "2:00 PM", interviewer: "Dr. Smith" },
@@ -29,6 +41,11 @@ export default function CollegeInterviewPortal() {
     setSelectedSlot(slot);
   };
 
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow">
@@ -37,7 +54,7 @@ export default function CollegeInterviewPortal() {
           <Menu as="div" className="relative inline-block text-left">
             <Menu.Button className="inline-flex justify-center items-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
               <User className="h-5 w-5 mr-2" />
-              <span>{userName}</span>
+              <span>{userName} ({userType})</span>
               <ChevronDown className="h-4 w-4 ml-2" />
             </Menu.Button>
             <Transition
@@ -76,8 +93,9 @@ export default function CollegeInterviewPortal() {
                   <Menu.Item>
                     {({ active }) => (
                       <button
+                        onClick={handleLogout}
                         className={`${
-                          active ? 'bg-indigo-500 text-white' : 'text-gray-900'
+                          active ? 'bg-red-500 text-white' : 'text-gray-900'
                         } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
                       >
                         Logout

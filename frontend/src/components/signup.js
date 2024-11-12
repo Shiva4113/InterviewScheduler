@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -48,32 +47,21 @@ export default function Signup() {
     }
   
     try {
-      // Create form data for the request
       const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('confirm_password', formData.confirmPassword);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('user_type', formData.role);
+      formDataToSend.append('gender', formData.gender);
       
-      // Create user data object
-      const userData = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        confirm_password: formData.confirmPassword,
-        phone: formData.phone,
-        user_type: formData.role,
-        gender: formData.gender,
-        department: formData.department
-      };
-  
-      // Append user data as a string
-      formDataToSend.append('user', JSON.stringify(userData));
-      
-      // Append resume if it exists
       if (resume) {
         formDataToSend.append('resume', resume);
       }
   
       const response = await fetch('http://localhost:8000/signup', {
         method: 'POST',
-        // Remove the Content-Type header to let the browser set it automatically with the boundary
         body: formDataToSend,
       });
   

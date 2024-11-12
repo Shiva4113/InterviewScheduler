@@ -24,6 +24,11 @@ export default function Login() {
         const data = await response.json();
         
         if (response.ok) {
+          sessionStorage.setItem('userName', data.name);
+          sessionStorage.setItem('userId', data.id);
+          sessionStorage.setItem('userType', user_type);
+          sessionStorage.setItem('userEmail', email);
+          
           if (user_type === 'interviewee') {
             navigate('/interviewee');
           } else {
