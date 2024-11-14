@@ -166,10 +166,10 @@ async def signup(    name: str = Form(...),
 
 @app.post('/timeslot/')
 async def timeslot(
-    email: str, role: str, date:str, time:str
+    id: str, role: str, date:str, time:str
 ):
 
-    pass
+    return {"message": "Timeslot created successfully"}
 
 
 
