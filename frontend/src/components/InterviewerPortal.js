@@ -52,11 +52,25 @@ export default function InterviewerPortal() {
     e.preventDefault();
     if (newSlotDate && newSlotTime) {
       try {
-        const response = await axios.post('/free-slots', {
-          date: newSlotDate,
-          time: newSlotTime,
+        const response = await fetch('http://localhost:8000/timeslot/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: sessionStorage.getItem('userId'),
+            role: sessionStorage.getItem('userType'),
+            date: newSlotDate,
+            time: newSlotTime,
+          }),
         });
-        setFreeSlots([...freeSlots, response.data]);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setFreeSlots([...freeSlots, data]);
         setNewSlotDate('');
         setNewSlotTime('');
       } catch (error) {
