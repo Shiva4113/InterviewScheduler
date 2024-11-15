@@ -7,12 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from parse import process_resume
 from processing_utils import get_embed_model, get_llm
 from passlib.hash import bcrypt
+from passlib.context import CryptContext
 import tempfile
 from pathlib import Path
 import nest_asyncio
+from dotenv import load_dotenv
+from datetime import datetime
+
 nest_asyncio.apply()
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+load_dotenv()
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,7 +32,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password='root',
+    password=os.getenv("SQL_PSWD"),
     database="SCHEDULER"
 )
 
@@ -52,6 +58,11 @@ class Login(BaseModel):
     email: str
     password: str
     user_type: str
+    
+class TimeslotRequest(BaseModel):
+    id: str
+    role: str
+    datetime: datetime
 
 @app.get('/')
 async def landing():
@@ -165,13 +176,15 @@ async def signup(    name: str = Form(...),
 
 
 
-@app.post('/timeslot/')
-async def timeslot(
-    id: str, role: str, date:str, time:str
-):
-
-    return {"message": "Timeslot created successfully"}
-
+async def timeslot(timeslot_request: TimeslotRequest):
+    # Extract datetime
+    datetime_value = timeslot_request.datetime
+    date_value = datetime_value.date() 
+    time_value = datetime_value.time() 
+    
+    return {
+        "message": f"Timeslot booked for {date_value} at {time_value}"
+    }
 
 
 
