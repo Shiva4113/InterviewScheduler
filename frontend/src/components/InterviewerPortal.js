@@ -13,7 +13,7 @@ export default function InterviewerPortal() {
   const [userId, setUserId] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [freeSlots, setFreeSlots] = useState([]);
+  const [freeSlots, setFreeSlots] = useState([]);  // Initialize as empty array
   const [newSlotDate, setNewSlotDate] = useState('');
   const [newSlotTime, setNewSlotTime] = useState('');
   const [position, setPosition] = useState("");
@@ -36,32 +36,44 @@ export default function InterviewerPortal() {
     if (storedId) setUserId(storedId);
     if (storedPosition) setPosition(storedPosition); 
 
-    // Fetch free slots 
+    // Fetch free slots using stored ID
     const fetchFreeSlots = async () => {
       try {
-        const response = await axios.get(`/free-slots/${storedId}`);
-        setFreeSlots(response.data);
+        const response = await fetch(`http://localhost:8000/free_slots/${storedId}`);
+        const data = await response.json();
+        
+        const dateTimeArray = Array.isArray(data) 
+          ? data.map(slot => `${slot.date} ${slot.time}`)
+          : [];
+          
+        setFreeSlots(dateTimeArray);
       } catch (error) {
-        console.error('Error fetching free slots:', error);
+        console.error('Error fetching slots:', error);
+        setFreeSlots([]);
       }
     };
+
     fetchFreeSlots();
   }, []);
-
+  
   const addFreeSlot = async (e) => {
     e.preventDefault();
     if (newSlotDate && newSlotTime) {
+
+      const formattedDate = new Date(newSlotDate).toISOString().split('T')[0]; // YYYY-MM-DD
+      const formattedTime = newSlotTime + ':00'; 
+
       try {
-        const response = await fetch('http://localhost:8000/timeslot/', {
+        const response = await fetch('http://localhost:8000/add_timeslot/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: sessionStorage.getItem('userId'),
-            role: sessionStorage.getItem('userType'),
-            date: newSlotDate,
-            time: newSlotTime,
+            id: userId,
+            role: userType,
+            date: formattedDate, 
+            time: formattedTime, 
           }),
         });
 
@@ -70,6 +82,7 @@ export default function InterviewerPortal() {
         }
 
         const data = await response.json();
+        console.log(data);
         setFreeSlots([...freeSlots, data]);
         setNewSlotDate('');
         setNewSlotTime('');
@@ -94,9 +107,9 @@ export default function InterviewerPortal() {
   };
 
   const handleLogout = () => {
-    // Clear all session data
+
     sessionStorage.clear();
-    // Navigate to login page
+
     navigate('/login');
   };
 
@@ -215,7 +228,7 @@ export default function InterviewerPortal() {
                   </div>
                 </form>
                 <ul className="space-y-2">
-                  {freeSlots.map((slot) => (
+                  {Array.isArray(freeSlots) && freeSlots.map((slot) => (
                     <li key={slot.id} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
                       <span>{slot.date} - {slot.time}</span>
                       <Button variant="ghost" size="sm" onClick={() => deleteFreeSlot(slot.id)}>
