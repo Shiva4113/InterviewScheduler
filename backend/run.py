@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 nest_asyncio.apply()
+from datetime import date, time
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -58,11 +59,12 @@ class Login(BaseModel):
     email: str
     password: str
     user_type: str
-    
-class TimeslotRequest(BaseModel):
+
+class TimeSlot(BaseModel):
     id: str
     role: str
-    datetime: datetime
+    date: date  # Changed from str to date
+    time: time  # Changed from str to time
 
 @app.get('/')
 async def landing():
@@ -176,19 +178,57 @@ async def signup(    name: str = Form(...),
 
 
 
-async def timeslot(timeslot_request: TimeslotRequest):
-    # Extract datetime
-    datetime_value = timeslot_request.datetime
-    date_value = datetime_value.date() 
-    time_value = datetime_value.time() 
+@app.post('/add_timeslot')
+async def timeslot(slot: TimeSlot):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            INSERT INTO faculty_schedule (faculty_id, date, time)
+            VALUES (%s, %s, %s)
+        """
+        
+        values = (slot.id, slot.date, slot.time)
+        cursor.execute(query, values)
+        connection.commit()
+        
+        return {"message": "Time slot created successfully"}
     
-    return {
-        "message": f"Timeslot booked for {date_value} at {time_value}"
-    }
-
-
-
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
 
 @app.post('/resume/')
 async def resumexd(file: UploadFile):
     return {"filename": file.filename}
+
+@app.get('/free_slots/{candidate_id}')
+async def free_slots(candidate_id: str):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT date, time
+            FROM faculty_schedule 
+            WHERE faculty_id = %s
+            ORDER BY date, time
+        """
+        
+        cursor.execute(query, (candidate_id,))
+        slots = cursor.fetchall()
+        # print(slots)
+        # Convert to array of date-time strings
+        datetime_array = [
+            (f"{slot['date']}", f"{slot['time']}") 
+            for slot in slots
+        ]
+        
+        return datetime_array
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        cursor.close()
