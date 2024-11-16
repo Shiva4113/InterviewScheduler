@@ -168,10 +168,10 @@ async def signup(    name: str = Form(...),
             cursor.execute(query_insert, (name, phone, password, email, gender, department))
         else:
             query_insert = """
-                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications,department, department)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications,department)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """
-            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications,department, department))
+            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications,department))
 
         connection.commit()
         return {"message": f"User {name} created successfully"}
@@ -270,6 +270,108 @@ async def delete_slot(faculty_id: str, date: str, time: str):
     finally:
         cursor.close()
         
+@app.get('/available_slots')
+async def available_slots():
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT faculty_id, date, time
+            FROM faculty_schedule
+            ORDER BY date, time
+        """
+        
+        cursor.execute(query)
+        slots = cursor.fetchall()
+        return slots
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        cursor.close()
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
+import mysql.connector as sqltor
+from typing import Optional
+import os
+from fastapi.middleware.cors import CORSMiddleware
+from parse import process_resume
+from processing_utils import get_embed_model, get_llm
+from passlib.hash import bcrypt
+import tempfile
+from pathlib import Path
+import nest_asyncio
+nest_asyncio.apply()
+from datetime import date, time
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Connect to the MySQL database
+connection = sqltor.connect(
+    host="localhost",
+    user="root", 
+    password= os.getenv("SQL_PSWD"),
+    database="SCHEDULER"
+)
+
+# Check if the connection is established
+if connection.is_connected():
+    print("Connected to MySQL database")
+else:
+    print("Failed to connect to the database")
+
+llm = get_llm()
+embed_model = get_embed_model()
+
+class UserSignup(BaseModel):
+    name: str
+    email: str
+    password: str
+    confirm_password: str
+    phone: str  
+    user_type: str
+    gender: str
+
+class Login(BaseModel):
+    email: str
+    password: str
+    user_type: str
+
+class TimeSlot(BaseModel):
+    id: str
+    role: str
+    date: date  # Changed from str to date
+    time: time  # Changed from str to time
+
+@app.get('/')
+async def landing():
+    return 'Hello'
+
+@app.post('/login/')
+async def login(user: Login):
+    user_type = 'FACULTY' if user.user_type == 'interviewer' else 'CANDIDATE'
+    cursor = connection.cursor(dictionary=True)
+    query = f"SELECT * FROM {user_type} WHERE email = %s AND password = %s"
+    cursor.execute(query, (user.email, user.password))
+    result = cursor.fetchone()
+    cursor.close()
+
+    if not result:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    return {
+  "name": result['Name'],
+  "id": result['faculty_id'] if user.user_type == 'interviewer' else result['candidate_id'],
+  "message": f"Welcome back {result['Name']}"
+}
 
 async def signup_logic(user: UserSignup, resume: UploadFile):
     if user.password != user.confirm_password:
@@ -314,6 +416,12 @@ async def fetch_interviews(faculty_id: str):
                 i.candidate_id, 
                 c.name,   
                 i.interview_date, 
+                i.interview_time,
+                c.department,
+                c.education,
+                c.skills,
+                c.publications,
+                c.experience
                 i.interview_time,
                 c.department,
                 c.education,
