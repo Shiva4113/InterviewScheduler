@@ -207,26 +207,32 @@ async def free_slots(candidate_id: str):
     try:
         cursor = connection.cursor(dictionary=True)
         
-        query = """
-            SELECT date, time
-            FROM faculty_schedule 
-            WHERE faculty_id = %s
-            ORDER BY date, time
-        """
-        
-        cursor.execute(query, (candidate_id,))
+        if candidate_id == '0':
+            query = """
+                SELECT date, time
+                FROM faculty_schedule 
+                ORDER BY date, time
+            """
+            cursor.execute(query)  # No parameters needed
+        else:
+            query = """
+                SELECT date, time
+                FROM faculty_schedule 
+                WHERE faculty_id = %s
+                ORDER BY date, time
+            """
+            cursor.execute(query, (candidate_id,))
+            
         slots = cursor.fetchall()
-        # Convert to array of date-time strings
         datetime_array = [
             (f"{slot['date']}", f"{slot['time']}") 
             for slot in slots
         ]
-        print(datetime_array)
+        
         return datetime_array
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
     finally:
         cursor.close()
 
@@ -480,17 +486,23 @@ async def free_slots(candidate_id: str):
     try:
         cursor = connection.cursor(dictionary=True)
         
-        query = """
-            SELECT date, time
-            FROM faculty_schedule 
-            WHERE faculty_id = %s
-            ORDER BY date, time
-        """
-        
-        cursor.execute(query, (candidate_id,))
+        if candidate_id == '0':
+            query = """
+                SELECT date, time
+                FROM faculty_schedule 
+                ORDER BY date, time
+            """
+            cursor.execute(query)  # No parameters needed
+        else:
+            query = """
+                SELECT date, time
+                FROM faculty_schedule 
+                WHERE faculty_id = %s
+                ORDER BY date, time
+            """
+            cursor.execute(query, (candidate_id,))
+            
         slots = cursor.fetchall()
-        # print(slots)
-        # Convert to array of date-time strings
         datetime_array = [
             (f"{slot['date']}", f"{slot['time']}") 
             for slot in slots
@@ -500,7 +512,6 @@ async def free_slots(candidate_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
     finally:
         cursor.close()
 
