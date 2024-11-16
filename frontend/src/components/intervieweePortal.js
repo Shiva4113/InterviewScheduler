@@ -184,12 +184,6 @@ export default function CollegeInterviewPortal() {
                       Upcoming
                     </span>
                   </li>
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">Round 4: Faculty Panel Interview</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                      Pending
-                    </span>
-                  </li>
                 </ul>
               </CardContent>
             </Card>
