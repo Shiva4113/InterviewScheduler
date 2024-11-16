@@ -225,3 +225,25 @@ async def free_slots(candidate_id: str):
     
     finally:
         cursor.close()
+
+@app.get('/delete_slot/{faculty_id}/{date}/{time}')
+async def delete_slot(faculty_id: str, date: date, time: time):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            DELETE FROM faculty_schedule
+            WHERE faculty_id = %s AND date = %s AND time = %s
+        """
+        
+        cursor.execute(query, (faculty_id, date, time))
+        connection.commit()
+        
+        return {"message": "Time slot deleted successfully"}
+    
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        cursor.close()
