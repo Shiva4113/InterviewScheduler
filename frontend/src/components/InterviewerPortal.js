@@ -105,8 +105,6 @@ export default function InterviewerPortal() {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
-      // Update state to remove the deleted slot
       setFreeSlots(prevSlots => 
         prevSlots.filter(slot => 
           !(slot[0] === slotDate && slot[1] === slotTime)

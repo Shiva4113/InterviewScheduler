@@ -19,23 +19,49 @@ export default function CollegeInterviewPortal() {
   const [userType, setUserType] = useState("");
   const [position, setPosition] = useState("Interviewee");
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Get user data from sessionStorage
     const storedName = sessionStorage.getItem('userName');
     const storedType = sessionStorage.getItem('userType');
+    const candidateId = sessionStorage.getItem('userId'); // Assuming you store userId
     
     if (storedName) setUserName(storedName);
     if (storedType) setUserType(storedType);
-  }, []); // Empty dependency array means this runs once on mount
 
-  const availableSlots = [
-    { id: 1, date: "June 15, 2023", time: "2:00 PM", interviewer: "Dr. Smith" },
-    { id: 2, date: "June 15, 2023", time: "4:00 PM", interviewer: "Dr. Johnson" },
-    { id: 3, date: "June 16, 2023", time: "10:00 AM", interviewer: "Dr. Williams" },
-    { id: 4, date: "June 16, 2023", time: "3:00 PM", interviewer: "Dr. Brown" },
-  ];
+    if (candidateId) {
+      fetchAvailableSlots(candidateId);
+    }
+  }, []); 
+
+  async function fetchAvailableSlots(candidateId) {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`http://localhost:8000/free_slots/0`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch slots');
+      }
+      const slotsData = await response.json();
+      
+      // Transform the data into the required format
+      const formattedSlots = slotsData.map((slot, index) => ({
+        id: index + 1,
+        date: slot[0], // First element is date
+        time: slot[1], // Second element is time
+        interviewer: "TBD" // Add interviewer if available from backend
+      }));
+      
+      setAvailableSlots(formattedSlots);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching slots:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handleSlotSelection = (slot) => {
     setSelectedSlot(slot);
@@ -143,7 +169,7 @@ export default function CollegeInterviewPortal() {
                             <div key={slot.id} className="flex items-center space-x-2 mb-2">
                               <RadioGroupItem value={slot.id.toString()} id={`slot-${slot.id}`} />
                               <Label htmlFor={`slot-${slot.id}`}>
-                                {slot.date} - {slot.time} with {slot.interviewer}
+                                {slot.date} - {slot.time}
                               </Label>
                             </div>
                           ))}
