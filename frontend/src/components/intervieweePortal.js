@@ -27,8 +27,7 @@ export default function CollegeInterviewPortal() {
   useEffect(() => {
     const storedName = sessionStorage.getItem('userName');
     const storedType = sessionStorage.getItem('userType');
-    const candidateId = sessionStorage.getItem('userId'); // Assuming you store userId
-    
+    const candidateId = sessionStorage.getItem('userId'); 
     if (storedName) setUserName(storedName);
     if (storedType) setUserType(storedType);
 
