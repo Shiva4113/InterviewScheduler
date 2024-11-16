@@ -490,7 +490,7 @@ async def free_slots(candidate_id: str):
         
         if candidate_id == '0':
             query = """
-                SELECT date, time
+                SELECT faculty_id,date, time
                 FROM faculty_schedule 
                 ORDER BY date, time
             """
@@ -561,3 +561,31 @@ def choose_slot(candidate_id: str, faculty_id: str, date: date, time: time):
     
     finally:
         cursor.close()
+
+
+@app.get('/fetch_interviews/{faculty_id}')
+async def fetch_interviews(faculty_id: str):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT 
+                i.candidate_id, 
+                c.name,   
+                i.interview_date, 
+                i.interview_time
+            FROM interview_schedule i
+            JOIN candidate c ON i.candidate_id = c.candidate_id  
+            WHERE i.faculty_id = %s
+            ORDER BY i.interview_date, i.interview_time
+        """
+        
+        cursor.execute(query, (faculty_id,))
+        interviews = cursor.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+    return interviews
+
+

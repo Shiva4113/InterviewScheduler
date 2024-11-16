@@ -98,7 +98,7 @@ export default function InterviewerPortal() {
       const response = await fetch(
         `http://localhost:8000/delete_slot/${storedId}/${slotDate}/${slotTime}`, 
         {
-          method: 'GET'  // Changed to GET to match backend
+          method: 'GET'
         }
       )
 
