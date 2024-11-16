@@ -33,7 +33,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password=os.getenv("SQL_PSWD"),
+    password="root",
     database="SCHEDULER"
 )
 
@@ -160,10 +160,10 @@ async def signup(    name: str = Form(...),
             cursor.execute(query_insert, (name, phone, password, email, gender, department))
         else:
             query_insert = """
-                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications,department)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """
-            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications))
+            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications,department))
 
         connection.commit()
         return {"message": f"User {name} created successfully"}
@@ -310,7 +310,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password= os.getenv("SQL_PSWD"),
+    password= "root",
     database="SCHEDULER"
 )
 
@@ -571,7 +571,12 @@ async def fetch_interviews(faculty_id: str):
                 i.candidate_id, 
                 c.name,   
                 i.interview_date, 
-                i.interview_time
+                i.interview_time,
+                c.department,
+                c.education,
+                c.skills,
+                c.publications,
+                c.experience
             FROM interview_schedule i
             JOIN candidate c ON i.candidate_id = c.candidate_id  
             WHERE i.faculty_id = %s

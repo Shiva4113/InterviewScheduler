@@ -19,12 +19,37 @@ export default function InterviewerPortal() {
   const [position, setPosition] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [upcomingInterviews, setInterviews] = useState([]);
 
-  const upcomingInterviews = [
-    { id: 1, name: "John Doe", position: "Assistant Professor", date: "June 15, 2023", time: "2:00 PM" },
-    { id: 2, name: "Alice Johnson", position: "Associate Professor", date: "June 20, 2023", time: "10:00 AM" },
-    { id: 3, name: "Bob Williams", position: "Assistant Professor", date: "June 22, 2023", time: "3:00 PM" },
-  ]
+  useEffect(() => {
+    // Get user data from sessionStorage
+    const storedName = sessionStorage.getItem('userName');
+    const storedType = sessionStorage.getItem('userType');
+    const storedId = sessionStorage.getItem('userId');
+    const storedPosition = sessionStorage.getItem('department'); 
+    
+    if (storedName) setUserName(storedName);
+    if (storedType) setUserType(storedType);
+    if (storedId) setUserId(storedId);
+    if (storedPosition) setPosition(storedPosition); 
+  
+    // Fetch free slots using stored ID
+    const fetchInterviews = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`http://localhost:8000/fetch_interviews/${storedId}`);
+        const data = await response.json();
+        setInterviews(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    fetchInterviews(); // Add this line to call the function
+  }, []); // Add dependencies if needed
 
   useEffect(() => {
     // Get user data from sessionStorage
@@ -228,7 +253,7 @@ export default function InterviewerPortal() {
                         <Calendar className="h-5 w-5 text-blue-500 mr-3" />
                         <div>
                           <p className="font-medium">{interview.name}</p>
-                          <p className="text-sm text-gray-500">{interview.date} - {interview.time}</p>
+                          <p className="text-sm text-gray-500">{interview.interview_date} - {interview.interview_time}</p>
                         </div>
                       </div>
                       <Button onClick={() => openCandidateModal(interview)}>
@@ -324,13 +349,25 @@ export default function InterviewerPortal() {
                         <strong>Name:</strong> {selectedCandidate.name}
                       </p>
                       <p className="text-sm text-gray-500">
-                        <strong>Position:</strong> {selectedCandidate.position}
+                        <strong>Position:</strong> {selectedCandidate.department}
                       </p>
                       <p className="text-sm text-gray-500">
-                        <strong>Interview Date:</strong> {selectedCandidate.date}
+                        <strong>Interview Date:</strong> {selectedCandidate.interview_date}
                       </p>
                       <p className="text-sm text-gray-500">
-                        <strong>Interview Time:</strong> {selectedCandidate.time}
+                        <strong>Interview Time:</strong> {selectedCandidate.interview_time}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Education:</strong> {selectedCandidate.education}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Skills:</strong> {selectedCandidate.skills}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Experience:</strong> {selectedCandidate.experience}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Publications:</strong> {selectedCandidate.publications}
                       </p>
                     </div>
                   )}
