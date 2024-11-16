@@ -55,11 +55,11 @@ export default function Signup() {
       formDataToSend.append('phone', formData.phone);
       formDataToSend.append('user_type', formData.role);
       formDataToSend.append('gender', formData.gender);
+      formDataToSend.append('department', formData.department);
       
       if (resume) {
         formDataToSend.append('resume', resume);
       }
-  
       const response = await fetch('http://localhost:8000/signup', {
         method: 'POST',
         body: formDataToSend,
@@ -175,6 +175,45 @@ export default function Signup() {
             />
           </div>
 
+          <div>
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
+                Department
+              </label>
+              <select
+                id="department"
+                name="department"
+                required
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                value={formData.department}
+                onChange={handleChange}
+              >
+                <option value="">Select department</option>
+                <option value="CSE">CSE</option>
+                <option value="ECE">ECE</option>
+                <option value="EEE">EEE</option>
+              </select>
+            </div>
+
+            <div>
+            <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+              Gender
+            </label>
+            <select
+              id="gender"
+              name="gender"
+              required
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              value={formData.gender}
+              onChange={handleChange}
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -203,46 +242,6 @@ export default function Signup() {
               </label>
             </div>
           </div>
-
-          <div>
-            <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
-              Gender
-            </label>
-            <select
-              id="gender"
-              name="gender"
-              required
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              value={formData.gender}
-              onChange={handleChange}
-            >
-              <option value="">Select gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          {formData.role === 'interviewer' && (
-            <div>
-              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
-                Department
-              </label>
-              <select
-                id="department"
-                name="department"
-                required
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                value={formData.department}
-                onChange={handleChange}
-              >
-                <option value="">Select department</option>
-                <option value="CSE">CSE</option>
-                <option value="ECE">ECE</option>
-                <option value="EEE">EEE</option>
-              </select>
-            </div>
-          )}
 
           {formData.role === 'interviewee' && (
             <div>

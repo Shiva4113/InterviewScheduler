@@ -17,6 +17,8 @@ export default function InterviewerPortal() {
   const [newSlotDate, setNewSlotDate] = useState('');
   const [newSlotTime, setNewSlotTime] = useState('');
   const [position, setPosition] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const upcomingInterviews = [
     { id: 1, name: "John Doe", position: "Assistant Professor", date: "June 15, 2023", time: "2:00 PM" },
@@ -38,18 +40,25 @@ export default function InterviewerPortal() {
 
     // Fetch free slots using stored ID
     const fetchFreeSlots = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const response = await fetch(`http://localhost:8000/free_slots/${storedId}`);
         const data = await response.json();
         
-        const dateTimeArray = Array.isArray(data) 
-          ? data.map(slot => `${slot.date} ${slot.time}`)
-          : [];
-          
-        setFreeSlots(dateTimeArray);
+        // Transform the array of tuples into array of objects
+        const formattedSlots = data.map(slot => ({
+          date: slot[0],
+          time: slot[1]
+        }));
+        
+        setFreeSlots(formattedSlots);
       } catch (error) {
         console.error('Error fetching slots:', error);
+        setError('Failed to fetch time slots');
         setFreeSlots([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -92,12 +101,28 @@ export default function InterviewerPortal() {
     }
   };
 
-  const deleteFreeSlot = async (id) => {
+  const deleteFreeSlot = async (slot) => {
     try {
-      await axios.delete(`/free-slots/${id}`);
-      setFreeSlots(freeSlots.filter(slot => slot.id !== id));
+      const response = await fetch(
+        `http://localhost:8000/delete_slot/${userId}/${slot.date}/${slot.time}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+
+      // Update state by filtering out the deleted slot
+      setFreeSlots(prevSlots => 
+        prevSlots.filter(s => 
+          !(s.date === slot.date && s.time === slot.time)
+        )
+      );
     } catch (error) {
-      console.error('Error deleting free slot:', error);
+      console.error('Error deleting slot:', error);
+      // Optionally add error notification here
     }
   };
 
@@ -228,14 +253,20 @@ export default function InterviewerPortal() {
                   </div>
                 </form>
                 <ul className="space-y-2">
-                  {Array.isArray(freeSlots) && freeSlots.map((slot) => (
-                    <li key={slot.id} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
-                      <span>{slot.date} - {slot.time}</span>
-                      <Button variant="ghost" size="sm" onClick={() => deleteFreeSlot(slot.id)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                        <span className="sr-only">Delete slot</span>
-                      </Button>
-                    </li>
+                  {Array.isArray(freeSlots) && freeSlots.map((slot, index) => (
+                    <div key={index} className="p-4 bg-white rounded-lg shadow border border-gray-200">
+                      <span>
+                        <span className="font-bold">{slot.date}</span>
+                        {' - '}
+                        <span className="font-bold">{slot.time}</span>
+                        <button
+                          onClick={() => deleteFreeSlot(slot)}
+                          className="ml-2 p-1 text-red-600 hover:text-red-800 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </span>
+                    </div>
                   ))}
                 </ul>
               </CardContent>

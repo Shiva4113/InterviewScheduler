@@ -103,7 +103,7 @@ async def signup(    name: str = Form(...),
     phone: str = Form(...),
     user_type: str = Form(...),
     gender: str = Form(...),
-    department: str = None,
+    department: str = Form(...),
     resume: Optional[UploadFile] = File(None)):
     if password != confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
@@ -218,14 +218,60 @@ async def free_slots(candidate_id: str):
         
         cursor.execute(query, (candidate_id,))
         slots = cursor.fetchall()
-        # print(slots)
         # Convert to array of date-time strings
         datetime_array = [
             (f"{slot['date']}", f"{slot['time']}") 
             for slot in slots
         ]
-        
+        print(datetime_array)
         return datetime_array
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        cursor.close()
+
+@app.delete('/delete_slot/{faculty_id}/{date}/{time}')
+async def delete_slot(faculty_id: str, date: str, time: str):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            DELETE FROM faculty_schedule 
+            WHERE faculty_id = %s 
+            AND date = %s 
+            AND time = %s
+        """
+        
+        cursor.execute(query, (faculty_id, date, time))
+        connection.commit()
+        
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Slot not found")
+            
+        return {"message": "Slot deleted successfully"}
+        
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        
+@app.get('/available_slots')
+async def available_slots():
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT faculty_id, date, time
+            FROM faculty_schedule
+            ORDER BY date, time
+        """
+        
+        cursor.execute(query)
+        slots = cursor.fetchall()
+        return slots
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
