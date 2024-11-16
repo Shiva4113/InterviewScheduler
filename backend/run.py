@@ -33,7 +33,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password=os.getenv("SQL_PSWD"),
+    password="root",
     database="SCHEDULER"
 )
 
@@ -168,10 +168,10 @@ async def signup(    name: str = Form(...),
             cursor.execute(query_insert, (name, phone, password, email, gender, department))
         else:
             query_insert = """
-                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications, department)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications,department, department)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """
-            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications, department))
+            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications,department, department))
 
         connection.commit()
         return {"message": f"User {name} created successfully"}
@@ -302,6 +302,40 @@ def choose_slot(candidate_id: str, faculty_id: str, date: date, time: time):
     
     finally:
         cursor.close()
+
+
+@app.get('/fetch_interviews/{faculty_id}')
+async def fetch_interviews(faculty_id: str):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT 
+                i.candidate_id, 
+                c.name,   
+                i.interview_date, 
+                i.interview_time,
+                c.department,
+                c.education,
+                c.skills,
+                c.publications,
+                c.experience
+            FROM interview_schedule i
+            JOIN candidate c ON i.candidate_id = c.candidate_id  
+            WHERE i.faculty_id = %s
+            ORDER BY i.interview_date, i.interview_time
+        """
+        
+        cursor.execute(query, (faculty_id,))
+        interviews = cursor.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+    return interviews
+
+
+
 
 @app.get('/available_slots/{candidate_id}')
 async def get_available_slots(candidate_id: str):
