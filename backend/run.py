@@ -370,7 +370,7 @@ async def get_booked_slot(candidate_id: str):
     try:
         cursor = connection.cursor(dictionary=True)
         query = """
-            SELECT i.interview_date, i.interview_time, f.faculty_id
+            SELECT i.interview_date, i.interview_time, f.faculty_id,i.round_no
             FROM interview_schedule i
             JOIN faculty f ON i.faculty_id = f.faculty_id
             WHERE i.candidate_id = %s
@@ -382,7 +382,8 @@ async def get_booked_slot(candidate_id: str):
             return {
                 "date": str(slot['interview_date']),
                 "time": str(slot['interview_time']),
-                "faculty_id": str(slot['faculty_id'])
+                "faculty_id": str(slot['faculty_id']),
+                "round_no": str(slot['round_no'])  # Added round_no
             }
         return None
     finally:
