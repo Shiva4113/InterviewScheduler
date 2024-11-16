@@ -3,20 +3,23 @@ import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, I
 import { Menu, Transition, Dialog } from '@headlessui/react'
 import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
-import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { useNavigate } from 'react-router-dom';
 
 export default function InterviewerPortal() {
-  const navigate = useNavigate()
-  const [userName, setUserName] = useState("")
-  const [userType, setUserType] = useState("")
-  const [userId, setUserId] = useState("")
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedCandidate, setSelectedCandidate] = useState(null)
-  const [freeSlots, setFreeSlots] = useState([])
-  const [newSlotDate, setNewSlotDate] = useState('')
-  const [newSlotTime, setNewSlotTime] = useState('')
-  const [position, setPosition] = useState("")
-  const storedId = sessionStorage.getItem('userId')
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState("");
+  const [userType, setUserType] = useState("");
+  const [userId, setUserId] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [freeSlots, setFreeSlots] = useState([]);  // Initialize as empty array
+  const [newSlotDate, setNewSlotDate] = useState('');
+  const [newSlotTime, setNewSlotTime] = useState('');
+  const [position, setPosition] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const upcomingInterviews = [
     { id: 1, name: "John Doe", position: "Assistant Professor", date: "June 15, 2023", time: "2:00 PM" },
     { id: 2, name: "Alice Johnson", position: "Associate Professor", date: "June 20, 2023", time: "10:00 AM" },
@@ -25,42 +28,48 @@ export default function InterviewerPortal() {
 
   useEffect(() => {
     // Get user data from sessionStorage
-    const storedName = sessionStorage.getItem('userName')
-    const storedType = sessionStorage.getItem('userType')
-    const storedId = sessionStorage.getItem('userId')
-    const storedPosition = sessionStorage.getItem('department')
+    const storedName = sessionStorage.getItem('userName');
+    const storedType = sessionStorage.getItem('userType');
+    const storedId = sessionStorage.getItem('userId');
+    const storedPosition = sessionStorage.getItem('department'); 
     
-    if (storedName) setUserName(storedName)
-    if (storedType) setUserType(storedType)
-    if (storedId) setUserId(storedId)
-    if (storedPosition) setPosition(storedPosition)
+    if (storedName) setUserName(storedName);
+    if (storedType) setUserType(storedType);
+    if (storedId) setUserId(storedId);
+    if (storedPosition) setPosition(storedPosition); 
 
-    fetchFreeSlots()
-  }, [])
-
-  const fetchFreeSlots = async () => {
-    try {
-      const storedId = sessionStorage.getItem('userId')
-      const response = await fetch(`http://localhost:8000/free_slots/${storedId}`)
-      const data = await response.json()
-      
-      const dateTimeArray = Array.isArray(data) 
-        ? data.map(slot => ({ id: `${slot.date}-${slot.time}`, date: slot.date, time: slot.time }))
-        : []
+    // Fetch free slots using stored ID
+    const fetchFreeSlots = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`http://localhost:8000/free_slots/${storedId}`);
+        const data = await response.json();
         
-      setFreeSlots(dateTimeArray)
-      console.log("Fetched slots:", dateTimeArray)
-    } catch (error) {
-      console.error('Error fetching slots:', error)
-      setFreeSlots([])
-    }
-  }
+        // Transform the array of tuples into array of objects
+        const formattedSlots = data.map(slot => ({
+          date: slot[0],
+          time: slot[1]
+        }));
+        
+        setFreeSlots(formattedSlots);
+      } catch (error) {
+        console.error('Error fetching slots:', error);
+        setError('Failed to fetch time slots');
+        setFreeSlots([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFreeSlots();
+  }, []);
   
   const addFreeSlot = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (newSlotDate && newSlotTime) {
-      const formattedDate = new Date(newSlotDate).toISOString().split('T')[0]
-      const formattedTime = newSlotTime + ':00'
+      const formattedDate = new Date(newSlotDate).toISOString().split('T')[0];
+      const formattedTime = newSlotTime + ':00';
 
       try {
         const response = await fetch('http://localhost:8000/add_timeslot/', {
@@ -71,60 +80,76 @@ export default function InterviewerPortal() {
           body: JSON.stringify({
             id: userId,
             role: userType,
-            date: formattedDate, 
-            time: formattedTime, 
+            date: formattedDate,
+            time: formattedTime,
           }),
-        })
+        });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json()
-        console.log("Added slot:", data)
-        setFreeSlots(prevSlots => [...prevSlots, { id: `${formattedDate}-${formattedTime}`, date: formattedDate, time: formattedTime }])
-        setNewSlotDate('')
-        setNewSlotTime('')
+        await response.json();
+        
+        // Immediately fetch updated slots after successful addition
+        const slotsResponse = await fetch(`http://localhost:8000/free_slots/${userId}`);
+        const slotsData = await slotsResponse.json();
+        
+        const formattedSlots = slotsData.map(slot => ({
+          date: slot[0],
+          time: slot[1]
+        }));
+        
+        setFreeSlots(formattedSlots);
+        setNewSlotDate('');
+        setNewSlotTime('');
+        
       } catch (error) {
-        console.error('Error adding free slot:', error)
+        console.error('Error:', error);
       }
     }
-  }
+  };
 
-  const deleteFreeSlot = async (slotDateTime) => {
+  const deleteFreeSlot = async (slot) => {
     try {
-      const [slotDate, slotTime] = slotDateTime;  // Already an array of [date, time]
-      
       const response = await fetch(
-        `http://localhost:8000/delete_slot/${storedId}/${slotDate}/${slotTime}`, 
+        `http://localhost:8000/delete_slot/${userId}/${slot.date}/${slot.time}`,
         {
           method: 'GET'
         }
-      )
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error('Failed to delete slot');
       }
-      setFreeSlots(prevSlots => 
-        prevSlots.filter(slot => 
-          !(slot[0] === slotDate && slot[1] === slotTime)
-        )
-      )
+
+      // Refresh slots list after deletion
+      const slotsResponse = await fetch(`http://localhost:8000/free_slots/${userId}`);
+      const slotsData = await slotsResponse.json();
+      
+      const formattedSlots = slotsData.map(slot => ({
+        date: slot[0],
+        time: slot[1]
+      }));
+      
+      setFreeSlots(formattedSlots);
       
     } catch (error) {
-      console.error('Error deleting slot:', error)
+      console.error('Error deleting slot:', error);
     }
-  }
+  };
 
   const openCandidateModal = (candidate) => {
-    setSelectedCandidate(candidate)
-    setIsModalOpen(true)
-  }
+    setSelectedCandidate(candidate);
+    setIsModalOpen(true);
+  };
 
   const handleLogout = () => {
-    sessionStorage.clear()
-    navigate('/login')
-  }
+
+    sessionStorage.clear();
+
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -241,10 +266,14 @@ export default function InterviewerPortal() {
                   </div>
                 </form>
                 <ul className="space-y-2">
-                  {freeSlots.map((slot) => (
+                  {Array.isArray(freeSlots) && freeSlots.map((slot) => (
                     <li key={slot.id} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
-                      <span>{slot.date} - {slot.time}</span>
-                      <Button variant="ghost" size="sm" onClick={() => deleteFreeSlot(slot.id)}>
+                      <span>
+                        <span className="font-bold">{slot.date}</span>
+                        {' - '}
+                        <span>{slot.time}</span>
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => deleteFreeSlot(slot)}>
                         <Trash2 className="h-4 w-4 text-red-500" />
                         <span className="sr-only">Delete slot</span>
                       </Button>

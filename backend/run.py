@@ -33,7 +33,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password="root",
+    password=os.getenv("SQL_PSWD"),
     database="SCHEDULER"
 )
 
@@ -72,11 +72,9 @@ async def landing():
 
 @app.post('/login/')
 async def login(user: Login):
-    user_type = 'FACULTY' if user.user_type == 'interviewer' else 'CANDIDATE'
     cursor = connection.cursor(dictionary=True)
-    query = f"SELECT * FROM {user_type} WHERE email = %s AND password = %s"
-    cursor.execute(query, (user.email, user.password))
-    result = cursor.fetchone()
+    cursor.callproc("login_user", (user.email, user.password, user.user_type))
+    result = cursor.stored_results().fetchone()
     cursor.close()
 
     if not result:
@@ -312,7 +310,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password='root',
+    password= os.getenv("SQL_PSWD"),
     database="SCHEDULER"
 )
 
