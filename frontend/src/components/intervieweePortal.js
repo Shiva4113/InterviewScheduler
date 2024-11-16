@@ -22,6 +22,10 @@ export default function CollegeInterviewPortal() {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingStatus, setBookingStatus] = useState(null);
+  const [hasBookedSlot, setHasBookedSlot] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +36,7 @@ export default function CollegeInterviewPortal() {
     if (storedType) setUserType(storedType);
 
     if (candidateId) {
+      fetchBookedSlot(candidateId); // Fetch booked slot first
       fetchAvailableSlots(candidateId);
     }
   }, []); 
@@ -39,28 +44,45 @@ export default function CollegeInterviewPortal() {
   async function fetchAvailableSlots(candidateId) {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:8000/free_slots/0`);
+      const response = await fetch(`http://localhost:8000/available_slots/${candidateId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch slots');
       }
       const slotsData = await response.json();
       
-      // Transform the data into the required format
+      // Transform data including faculty_id
       const formattedSlots = slotsData.map((slot, index) => ({
         id: index + 1,
-        date: slot[0], // First element is date
-        time: slot[1], // Second element is time
-        interviewer: "TBD" // Add interviewer if available from backend
+        date: slot[0],
+        time: slot[1],
+        faculty_id: slot[2]
       }));
       
       setAvailableSlots(formattedSlots);
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching slots:', err);
+      console.error('Error:', err);
     } finally {
       setIsLoading(false);
     }
   }
+
+  // Add new function to fetch booked slot
+  const fetchBookedSlot = async (candidateId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/booked_slot/${candidateId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch booked slot');
+      }
+      const data = await response.json();
+      if (data) {
+        setSelectedSlot(data);
+        setHasBookedSlot(true);
+      }
+    } catch (error) {
+      console.error('Error fetching booked slot:', error);
+    }
+  };
 
   const handleSlotSelection = (slot) => {
     setSelectedSlot(slot);
@@ -69,6 +91,34 @@ export default function CollegeInterviewPortal() {
   const handleLogout = () => {
     sessionStorage.clear();
     navigate('/login');
+  };
+
+  const handleSubmitSlot = async () => {
+    if (!selectedSlot) return;
+    
+    setIsSubmitting(true);
+    try {
+      const candidateId = sessionStorage.getItem('userId');
+      const response = await fetch(
+        `http://localhost:8000/choose_slot/${candidateId}/${selectedSlot.faculty_id}/${selectedSlot.date}/${selectedSlot.time}`,
+        { method: 'GET' }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to book slot');
+      }
+  
+      setBookingStatus('success');
+      setHasBookedSlot(true);
+      setIsDialogOpen(false); // Close dialog
+      alert('Timeslot booked successfully!'); // Show alert
+    } catch (error) {
+      console.error('Error:', error);
+      setBookingStatus('error');
+      alert('Failed to book timeslot. Please try again.'); // Show error alert
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -152,30 +202,52 @@ export default function CollegeInterviewPortal() {
                         </p>
                       </div>
                     </div>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline">
-                          <Clock className="h-4 w-4 mr-2" />
-                          Choose Timeslot
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Choose Interview Timeslot</DialogTitle>
-                        </DialogHeader>
-                        <RadioGroup value={selectedSlot?.id} onValueChange={(value) => handleSlotSelection(availableSlots.find(slot => slot.id === parseInt(value)))}>
-                          {availableSlots.map((slot) => (
-                            <div key={slot.id} className="flex items-center space-x-2 mb-2">
-                              <RadioGroupItem value={slot.id.toString()} id={`slot-${slot.id}`} />
-                              <Label htmlFor={`slot-${slot.id}`}>
-                                {slot.date} - {slot.time}
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                        <Button onClick={() => setSelectedSlot(null)}>Clear Selection</Button>
-                      </DialogContent>
-                    </Dialog>
+                    {!hasBookedSlot ? (
+                      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline">
+                            <Clock className="h-4 w-4 mr-2" />
+                            Choose Timeslot
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Choose Interview Timeslot</DialogTitle>
+                          </DialogHeader>
+                          <RadioGroup 
+                            value={selectedSlot?.id?.toString()} 
+                            onValueChange={(value) => {
+                              const slot = availableSlots.find(s => s.id.toString() === value);
+                              setSelectedSlot(slot);
+                            }}
+                          >
+                            {availableSlots.map((slot) => (
+                              <div key={slot.id} className="flex items-center space-x-2 mb-2">
+                                <RadioGroupItem value={slot.id.toString()} id={`slot-${slot.id}`} />
+                                <Label htmlFor={`slot-${slot.id}`}>
+                                  {slot.date} - {slot.time}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                          <Button 
+                            onClick={handleSubmitSlot} 
+                            disabled={!selectedSlot || isSubmitting}
+                            className="mt-4"
+                          >
+                            {isSubmitting ? 'Booking...' : 'Submit Selection'}
+                          </Button>
+                          {bookingStatus === 'success' && (
+                            <p className="text-green-600 mt-2">Slot booked successfully!</p>
+                          )}
+                          {bookingStatus === 'error' && (
+                            <p className="text-red-600 mt-2">Failed to book slot. Please try again.</p>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <span className="text-green-600">Interview Scheduled</span>
+                    )}
                   </li>
                   <li className="flex items-center">
                     <Calendar className="h-5 w-5 text-blue-500 mr-3" />
