@@ -196,7 +196,7 @@ export default function CollegeInterviewPortal() {
                     <div className="flex items-center">
                       <Calendar className="h-5 w-5 text-blue-500 mr-3" />
                       <div>
-                        <p className="font-medium">Teaching Demonstration</p>
+                        <p className="font-medium">{selectedSlot ? `Round ${selectedSlot.round_no}` : 'Round -'}</p>
                         <p className="text-sm text-gray-500">
                           {selectedSlot ? `${selectedSlot.date} - ${selectedSlot.time}` : "Not scheduled"}
                         </p>
@@ -248,13 +248,6 @@ export default function CollegeInterviewPortal() {
                     ) : (
                       <span className="text-green-600">Interview Scheduled</span>
                     )}
-                  </li>
-                  <li className="flex items-center">
-                    <Calendar className="h-5 w-5 text-blue-500 mr-3" />
-                    <div>
-                      <p className="font-medium">Faculty Panel Interview</p>
-                      <p className="text-sm text-gray-500">June 20, 2023 - 10:00 AM</p>
-                    </div>
                   </li>
                 </ul>
               </CardContent>
