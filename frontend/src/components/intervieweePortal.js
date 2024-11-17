@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Fragment } from 'react';
 import { Calendar, ChevronDown, User, Clock } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
@@ -196,7 +197,7 @@ export default function CollegeInterviewPortal() {
                     <div className="flex items-center">
                       <Calendar className="h-5 w-5 text-blue-500 mr-3" />
                       <div>
-                        <p className="font-medium">{selectedSlot ? `${selectedSlot.round_no}` : 'Round -'}</p>
+                        <p className="font-medium">Round - {selectedSlot ? `${selectedSlot.round_no}` : '-'}</p>
                         <p className="text-sm text-gray-500">
                           {selectedSlot ? `${selectedSlot.date} - ${selectedSlot.time}` : "Not scheduled"}
                         </p>
@@ -248,31 +249,6 @@ export default function CollegeInterviewPortal() {
                     ) : (
                       <span className="text-green-600">Interview Scheduled</span>
                     )}
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-xl font-semibold mb-4">Application Status</h3>
-                <ul className="space-y-4">
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">Round 1: Initial Screening</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      Passed
-                    </span>
-                  </li>
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">Round 2: Research Presentation</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      Passed
-                    </span>
-                  </li>
-                  <li className="flex justify-between items-center">
-                    <span className="font-medium">Round 3: Teaching Demonstration</span>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      Upcoming
-                    </span>
                   </li>
                 </ul>
               </CardContent>

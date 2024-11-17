@@ -72,11 +72,16 @@ async def landing():
 
 @app.post('/login/')
 async def login(user: Login):
+    cursor = None
     try:
+        # Close any unread results first
+        if connection.unread_result:
+            connection.consume_results()
+            
         cursor = connection.cursor(dictionary=True)
         cursor.callproc("login_user", (user.email, user.password, user.user_type))
         
-        # Fix stored results fetching
+        # Fetch stored results
         for result in cursor.stored_results():
             user_data = result.fetchone()
             if user_data:
@@ -91,7 +96,8 @@ async def login(user: Login):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        cursor.close()
+        if cursor:
+            cursor.close()
 
 
 async def signup_logic(user: UserSignup, resume: UploadFile):
@@ -310,12 +316,7 @@ async def fetch_interviews(faculty_id: str):
                 c.skills,
                 c.publications,
                 c.experience,
-                i.interview_time,
-                c.department,
-                c.education,
-                c.skills,
-                c.publications,
-                c.experience
+                i.round_no
             FROM interview_schedule i
             JOIN candidate c ON i.candidate_id = c.candidate_id  
             WHERE i.faculty_id = %s
@@ -324,14 +325,30 @@ async def fetch_interviews(faculty_id: str):
         
         cursor.execute(query, (faculty_id,))
         interviews = cursor.fetchall()
+        
+        formatted_interviews = [
+            {
+                "candidate_id": str(interview['candidate_id']),
+                "name": str(interview['name']),
+                "interview_date": str(interview['interview_date']),
+                "interview_time": str(interview['interview_time']),
+                "department": str(interview['department']),
+                "education": str(interview['education']),
+                "skills": str(interview['skills']),
+                "publications": str(interview['publications']),
+                "experience": str(interview['experience']),
+                "round_no": str(interview.get('round_no', '1'))
+            }
+            for interview in interviews
+        ]
+        
+        return formatted_interviews
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        cursor.close()
-    return interviews
-
-
-
+        if cursor:
+            cursor.close()
 
 @app.get('/available_slots/{candidate_id}')
 async def get_available_slots(candidate_id: str):
@@ -390,7 +407,14 @@ async def get_booked_slot(candidate_id: str):
         cursor.close()
 
 @app.post('/add_result')
-async def add_interview_result(result: dict):
+async def add_interview_result(
+    interview_id: str,
+    faculty_id: str,
+    candidate_id: str,
+    result: str,
+    remarks: str,
+    round_no: int
+):
     try:
         cursor = connection.cursor(dictionary=True)
         query = """
@@ -399,12 +423,12 @@ async def add_interview_result(result: dict):
             VALUES (%s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
-            result['interview_id'],
-            result['faculty_id'],
-            result['candidate_id'],
-            result['result'],
-            result['remarks'],
-            result['round_no']
+            interview_id,
+            faculty_id,
+            candidate_id,
+            result,
+            remarks,
+            round_no
         ))
         connection.commit()
         return {"message": "Result added successfully"}
@@ -412,7 +436,9 @@ async def add_interview_result(result: dict):
         connection.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        cursor.close()
+        if cursor:
+            cursor.close()
+
 
 @app.get('/current_round/{candidate_id}')
 async def get_current_round(candidate_id: str):
