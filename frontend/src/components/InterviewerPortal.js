@@ -1,9 +1,15 @@
-import React, { useState, useEffect, Fragment } from 'react'
-import { Bell, Calendar, ChevronDown, FileText, User, BookOpen, GraduationCap, Info, Plus, Trash2 } from 'lucide-react'
-import { Menu, Transition, Dialog } from '@headlessui/react'
-import { Button } from "./ui/button"
-import { Card, CardContent } from "./ui/card"
-import axios from 'axios'
+import React, { useState, useEffect, Fragment } from 'react';
+import { Menu, Transition } from '@headlessui/react';
+import { Calendar, ChevronDown, User, Info, Plus, Trash2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
+import { Label } from "./ui/label";
 import { useNavigate } from 'react-router-dom';
 
 export default function InterviewerPortal() {
@@ -11,15 +17,15 @@ export default function InterviewerPortal() {
   const [userName, setUserName] = useState("");
   const [userType, setUserType] = useState("");
   const [userId, setUserId] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [freeSlots, setFreeSlots] = useState([]);  // Initialize as empty array
   const [newSlotDate, setNewSlotDate] = useState('');
   const [newSlotTime, setNewSlotTime] = useState('');
   const [position, setPosition] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [upcomingInterviews, setInterviews] = useState([]);
+  const [resultForm, setResultForm] = useState({ result: '', remarks: '', round_no: 1 });
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   useEffect(() => {
     // Get user data from sessionStorage
@@ -35,61 +41,18 @@ export default function InterviewerPortal() {
   
     // Fetch free slots using stored ID
     const fetchInterviews = async () => {
-      setIsLoading(true);
-      setError(null);
       try {
         const response = await fetch(`http://localhost:8000/fetch_interviews/${storedId}`);
         const data = await response.json();
         setInterviews(data);
       } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching interviews:', err);
       }
     };
   
     fetchInterviews(); // Add this line to call the function
-  }, []); // Add dependencies if needed
-
-  useEffect(() => {
-    // Get user data from sessionStorage
-    const storedName = sessionStorage.getItem('userName');
-    const storedType = sessionStorage.getItem('userType');
-    const storedId = sessionStorage.getItem('userId');
-    const storedPosition = sessionStorage.getItem('department'); 
-    
-    if (storedName) setUserName(storedName);
-    if (storedType) setUserType(storedType);
-    if (storedId) setUserId(storedId);
-    if (storedPosition) setPosition(storedPosition); 
-
-    // Fetch free slots using stored ID
-    const fetchFreeSlots = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`http://localhost:8000/free_slots/${storedId}`);
-        const data = await response.json();
-        
-        // Transform the array of tuples into array of objects
-        const formattedSlots = data.map(slot => ({
-          date: slot[0],
-          time: slot[1]
-        }));
-        
-        setFreeSlots(formattedSlots);
-      } catch (error) {
-        console.error('Error fetching slots:', error);
-        setError('Failed to fetch time slots');
-        setFreeSlots([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFreeSlots();
   }, []);
-  
+
   const addFreeSlot = async (e) => {
     e.preventDefault();
     if (newSlotDate && newSlotTime) {
@@ -164,16 +127,46 @@ export default function InterviewerPortal() {
     }
   };
 
-  const openCandidateModal = (candidate) => {
-    setSelectedCandidate(candidate);
-    setIsModalOpen(true);
+  const handleResultSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:8000/add_result', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interview_id: selectedCandidate.id,
+          faculty_id: userId,
+          candidate_id: selectedCandidate.candidate_id,
+          result: resultForm.result,
+          remarks: resultForm.remarks,
+          round_no: resultForm.round_no
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit result');
+      }
+
+      alert('Result submitted successfully');
+      setResultForm({ result: '', remarks: '', round_no: 1 });
+      setIsResultModalOpen(false);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to submit result');
+    }
   };
 
   const handleLogout = () => {
-
     sessionStorage.clear();
-
     navigate('/login');
+  };
+
+  const openCandidateModal = (interview) => {
+    console.log('Opening candidate modal with interview:', interview);
+    setSelectedCandidate(interview);
+    setIsModalOpen(true);
   };
 
   return (
@@ -260,6 +253,16 @@ export default function InterviewerPortal() {
                         <Info className="h-4 w-4 mr-2" />
                         View Details
                       </Button>
+                      <Button 
+                        onClick={() => {
+                          setSelectedCandidate(interview);
+                          setIsResultModalOpen(true);
+                        }}
+                        className="ml-2"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Result
+                      </Button>
                     </li>
                   ))}
                 </ul>
@@ -310,79 +313,69 @@ export default function InterviewerPortal() {
           </div>
         </div>
       </main>
-
-      <Transition appear show={isModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={() => setIsModalOpen(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-lg font-medium leading-6 text-gray-900"
-                  >
-                    Candidate Details
-                  </Dialog.Title>
-                  {selectedCandidate && (
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        <strong>Name:</strong> {selectedCandidate.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Position:</strong> {selectedCandidate.department}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Interview Date:</strong> {selectedCandidate.interview_date}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Interview Time:</strong> {selectedCandidate.interview_time}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Education:</strong> {selectedCandidate.education}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Skills:</strong> {selectedCandidate.skills}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Experience:</strong> {selectedCandidate.experience}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        <strong>Publications:</strong> {selectedCandidate.publications}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="mt-4">
-                    <Button onClick={() => setIsModalOpen(false)}>
-                      Close
-                    </Button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+      <Dialog open={isResultModalOpen} onOpenChange={setIsResultModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Interview Result</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleResultSubmit} className="mt-4">
+            <div className="space-y-4">
+              <div>
+                <Label>Result</Label>
+                <select
+                  value={resultForm.result}
+                  onChange={(e) => setResultForm({...resultForm, result: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                >
+                  <option value="">Select Result</option>
+                  <option value="PASS">Pass</option>
+                  <option value="FAIL">Fail</option>
+                </select>
+              </div>
+              <div>
+                <Label>Remarks</Label>
+                <textarea
+                  value={resultForm.remarks}
+                  onChange={(e) => setResultForm({...resultForm, remarks: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsResultModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Submit Result
+                </Button>
+              </div>
             </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="bg-opacity-75">
+          <DialogHeader>
+            <DialogTitle>Candidate Details</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2">
+            <p className="text-sm text-gray-500"><strong>Name:</strong> {selectedCandidate?.name}</p>
+            <p className="text-sm text-gray-500"><strong>Department:</strong> {selectedCandidate?.department}</p>
+            <p className="text-sm text-gray-500"><strong>Interview Date:</strong> {selectedCandidate?.interview_date}</p>
+            <p className="text-sm text-gray-500"><strong>Interview Time:</strong> {selectedCandidate?.interview_time}</p>
+            <p className="text-sm text-gray-500"><strong>Education:</strong> {selectedCandidate?.education}</p>
+            <p className="text-sm text-gray-500"><strong>Skills:</strong> {selectedCandidate?.skills}</p>
+            <p className="text-sm text-gray-500"><strong>Experience:</strong> {selectedCandidate?.experience}</p>
+            <p className="text-sm text-gray-500"><strong>Publications:</strong> {selectedCandidate?.publications}</p>
           </div>
-        </Dialog>
-      </Transition>
+          <div className="mt-4">
+            <Button onClick={() => setIsModalOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

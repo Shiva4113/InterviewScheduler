@@ -388,3 +388,43 @@ async def get_booked_slot(candidate_id: str):
         return None
     finally:
         cursor.close()
+
+@app.post('/add_result')
+async def add_interview_result(result: dict):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            INSERT INTO interview_results 
+            (interview_id, faculty_id, candidate_id, result, remarks, round_no)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (
+            result['interview_id'],
+            result['faculty_id'],
+            result['candidate_id'],
+            result['result'],
+            result['remarks'],
+            result['round_no']
+        ))
+        connection.commit()
+        return {"message": "Result added successfully"}
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+
+@app.get('/current_round/{candidate_id}')
+async def get_current_round(candidate_id: str):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT COALESCE(MAX(round_no), 0) + 1 as next_round
+            FROM interview_results
+            WHERE candidate_id = %s
+        """
+        cursor.execute(query, (candidate_id,))
+        result = cursor.fetchone()
+        return {"next_round": result['next_round']}
+    finally:
+        cursor.close()
