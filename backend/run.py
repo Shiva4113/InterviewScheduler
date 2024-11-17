@@ -72,11 +72,16 @@ async def landing():
 
 @app.post('/login/')
 async def login(user: Login):
+    cursor = None
     try:
+        # Close any unread results first
+        if connection.unread_result:
+            connection.consume_results()
+            
         cursor = connection.cursor(dictionary=True)
         cursor.callproc("login_user", (user.email, user.password, user.user_type))
         
-        # Fix stored results fetching
+        # Fetch stored results
         for result in cursor.stored_results():
             user_data = result.fetchone()
             if user_data:
@@ -91,7 +96,8 @@ async def login(user: Login):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        cursor.close()
+        if cursor:
+            cursor.close()
 
 
 async def signup_logic(user: UserSignup, resume: UploadFile):
@@ -335,7 +341,12 @@ async def fetch_interviews(faculty_id: str):
 
 @app.get('/available_slots/{candidate_id}')
 async def get_available_slots(candidate_id: str):
+    cursor = None
     try:
+        # Handle any unread results first
+        if connection.unread_result:
+            connection.consume_results()
+            
         cursor = connection.cursor(dictionary=True)
         
         query = """
@@ -359,11 +370,12 @@ async def get_available_slots(candidate_id: str):
         ]
         
         return datetime_array
-
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500)
     finally:
-        cursor.close()
+        if cursor:
+            cursor.close()
 
 @app.get('/booked_slot/{candidate_id}')
 async def get_booked_slot(candidate_id: str):
