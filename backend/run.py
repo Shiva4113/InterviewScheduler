@@ -316,12 +316,7 @@ async def fetch_interviews(faculty_id: str):
                 c.skills,
                 c.publications,
                 c.experience,
-                i.interview_time,
-                c.department,
-                c.education,
-                c.skills,
-                c.publications,
-                c.experience
+                i.round_no
             FROM interview_schedule i
             JOIN candidate c ON i.candidate_id = c.candidate_id  
             WHERE i.faculty_id = %s
@@ -330,23 +325,34 @@ async def fetch_interviews(faculty_id: str):
         
         cursor.execute(query, (faculty_id,))
         interviews = cursor.fetchall()
+        
+        formatted_interviews = [
+            {
+                "candidate_id": str(interview['candidate_id']),
+                "name": str(interview['name']),
+                "interview_date": str(interview['interview_date']),
+                "interview_time": str(interview['interview_time']),
+                "department": str(interview['department']),
+                "education": str(interview['education']),
+                "skills": str(interview['skills']),
+                "publications": str(interview['publications']),
+                "experience": str(interview['experience']),
+                "round_no": str(interview.get('round_no', '1'))
+            }
+            for interview in interviews
+        ]
+        
+        return formatted_interviews
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        cursor.close()
-    return interviews
-
-
-
+        if cursor:
+            cursor.close()
 
 @app.get('/available_slots/{candidate_id}')
 async def get_available_slots(candidate_id: str):
-    cursor = None
     try:
-        # Handle any unread results first
-        if connection.unread_result:
-            connection.consume_results()
-            
         cursor = connection.cursor(dictionary=True)
         
         query = """
@@ -370,12 +376,11 @@ async def get_available_slots(candidate_id: str):
         ]
         
         return datetime_array
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500)
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if cursor:
-            cursor.close()
+        cursor.close()
 
 @app.get('/booked_slot/{candidate_id}')
 async def get_booked_slot(candidate_id: str):
@@ -400,3 +405,36 @@ async def get_booked_slot(candidate_id: str):
         return None
     finally:
         cursor.close()
+
+@app.post('/add_result')
+async def add_interview_result(
+    interview_id: str,
+    faculty_id: str,
+    candidate_id: str,
+    result: str,
+    remarks: str,
+    round_no: int
+):
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            INSERT INTO interview_results 
+            (interview_id, faculty_id, candidate_id, result, remarks, round_no)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (
+            interview_id,
+            faculty_id,
+            candidate_id,
+            result,
+            remarks,
+            round_no
+        ))
+        connection.commit()
+        return {"message": "Result added successfully"}
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cursor:
+            cursor.close()
