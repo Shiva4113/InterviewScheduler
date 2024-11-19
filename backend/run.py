@@ -33,7 +33,7 @@ app.add_middleware(
 connection = sqltor.connect(
     host="localhost",
     user="root", 
-    password=os.getenv("SQL_PSWD"),
+    password="root",
     database="SCHEDULER"
 )
 

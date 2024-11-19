@@ -130,7 +130,7 @@ export default function InterviewerPortal() {
   const handleResultSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8000/add_result', {
+      const response = await fetch('http://localhost:8000/add_result/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
