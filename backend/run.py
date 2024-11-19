@@ -12,10 +12,9 @@ import tempfile
 from pathlib import Path
 import nest_asyncio
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, date, time
 
 nest_asyncio.apply()
-from datetime import date, time
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -28,20 +27,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Connect to the MySQL database
-connection = sqltor.connect(
-    host="localhost",
-    user="root", 
-    password="root",
-    database="SCHEDULER"
-)
-
-# Check if the connection is established
-if connection.is_connected():
-    print("Connected to MySQL database")
-else:
-    print("Failed to connect to the database")
 
 llm = get_llm()
 embed_model = get_embed_model()
@@ -63,8 +48,27 @@ class Login(BaseModel):
 class TimeSlot(BaseModel):
     id: str
     role: str
-    date: date  # Changed from str to date
-    time: time  # Changed from str to time
+    date: date
+    time: time
+
+def get_connection(user_type=None):
+    # Default to root user
+    db_user = 'root'
+    db_password = os.getenv("SQL_PSWD")  # Your root password
+
+    if user_type == 'interviewee':
+        db_user = 'interviewee_user'
+        db_password = 'password1'  # Replace with actual password
+    elif user_type == 'interviewer':
+        db_user = 'interviewer_user'
+        db_password = 'password2'  # Replace with actual password
+
+    return sqltor.connect(
+        host="localhost",
+        user=db_user,
+        password=db_password,
+        database="SCHEDULER"
+    )
 
 @app.get('/')
 async def landing():
@@ -74,6 +78,7 @@ async def landing():
 async def login(user: Login):
     cursor = None
     try:
+        connection = get_connection(user.user_type)
         # Close any unread results first
         if connection.unread_result:
             connection.consume_results()
@@ -90,7 +95,7 @@ async def login(user: Login):
                     "id": user_data['faculty_id'] if user.user_type == 'interviewer' else user_data['candidate_id'],
                     "message": f"Welcome back {user_data['Name']}"
                 }
-            
+        
         raise HTTPException(status_code=401, detail="Invalid email or password")
         
     except Exception as e:
@@ -98,17 +103,11 @@ async def login(user: Login):
     finally:
         if cursor:
             cursor.close()
-
-
-async def signup_logic(user: UserSignup, resume: UploadFile):
-    if user.password != user.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
-
-    cursor = connection.cursor(dictionary=True)
-    print("Something works!")
+        connection.close()
 
 @app.post('/signup/')
-async def signup(    name: str = Form(...),
+async def signup(
+    name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
@@ -116,10 +115,12 @@ async def signup(    name: str = Form(...),
     user_type: str = Form(...),
     gender: str = Form(...),
     department: str = Form(...),
-    resume: Optional[UploadFile] = File(None)):
+    resume: Optional[UploadFile] = File(None)
+):
     if password != confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
+    connection = get_connection(user_type)
     cursor = connection.cursor(dictionary=True)
     try:
         # Check if the user already exists
@@ -174,10 +175,10 @@ async def signup(    name: str = Form(...),
             cursor.execute(query_insert, (name, phone, password, email, gender, department))
         else:
             query_insert = """
-                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications,department)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+                INSERT INTO candidate (Name, Phone, password, email, Gender, Education, Experience, Skills, Publications, department)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications,department))
+            cursor.execute(query_insert, (name, phone, password, email, gender, education, experience, skills, publications, department))
 
         connection.commit()
         return {"message": f"User {name} created successfully"}
@@ -187,11 +188,11 @@ async def signup(    name: str = Form(...),
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     finally:
         cursor.close()
-
-
+        connection.close()
 
 @app.post('/add_timeslot')
 async def timeslot(slot: TimeSlot):
+    connection = get_connection('interviewer')  # Only interviewer can add timeslots
     try:
         cursor = connection.cursor(dictionary=True)
         
@@ -211,6 +212,7 @@ async def timeslot(slot: TimeSlot):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
+        connection.close()
 
 @app.post('/resume/')
 async def resumexd(file: UploadFile):
@@ -218,6 +220,7 @@ async def resumexd(file: UploadFile):
 
 @app.get('/free_slots/{candidate_id}')
 async def free_slots(candidate_id: str):
+    connection = get_connection('interviewee')  # Assuming interviewee accesses this
     try:
         cursor = connection.cursor(dictionary=True)
         
@@ -249,9 +252,11 @@ async def free_slots(candidate_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
+        connection.close()
 
 @app.delete('/delete_slot/{faculty_id}/{date}/{time}')
 async def delete_slot(faculty_id: str, date: str, time: str):
+    connection = get_connection('interviewer')  # Only interviewer can delete slots
     try:
         cursor = connection.cursor(dictionary=True)
         
@@ -275,10 +280,11 @@ async def delete_slot(faculty_id: str, date: str, time: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
-
+        connection.close()
 
 @app.get('/choose_slot/{candidate_id}/{faculty_id}/{date}/{time}')
 def choose_slot(candidate_id: str, faculty_id: str, date: date, time: time):
+    connection = get_connection('interviewee')  # Interviewee chooses slots
     try:
         cursor = connection.cursor(dictionary=True)
         
@@ -298,10 +304,11 @@ def choose_slot(candidate_id: str, faculty_id: str, date: date, time: time):
     
     finally:
         cursor.close()
-
+        connection.close()
 
 @app.get('/fetch_interviews/{faculty_id}')
 async def fetch_interviews(faculty_id: str):
+    connection = get_connection('interviewer')  # Interviewer fetches interviews
     try:
         cursor = connection.cursor(dictionary=True)
         
@@ -351,9 +358,11 @@ async def fetch_interviews(faculty_id: str):
     finally:
         if cursor:
             cursor.close()
+        connection.close()
 
 @app.get('/available_slots/{candidate_id}')
 async def get_available_slots(candidate_id: str):
+    connection = get_connection('interviewee')  # Interviewee accesses available slots
     try:
         cursor = connection.cursor(dictionary=True)
         
@@ -383,13 +392,15 @@ async def get_available_slots(candidate_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
+        connection.close()
 
 @app.get('/booked_slot/{candidate_id}')
 async def get_booked_slot(candidate_id: str):
+    connection = get_connection('interviewee')  # Interviewee views booked slot
     try:
         cursor = connection.cursor(dictionary=True)
         query = """
-            SELECT i.interview_date, i.interview_time, f.faculty_id,i.round_no
+            SELECT i.interview_date, i.interview_time, f.faculty_id, i.round_no
             FROM interview_schedule i
             JOIN faculty f ON i.faculty_id = f.faculty_id
             WHERE i.candidate_id = %s
@@ -402,11 +413,12 @@ async def get_booked_slot(candidate_id: str):
                 "date": str(slot['interview_date']),
                 "time": str(slot['interview_time']),
                 "faculty_id": str(slot['faculty_id']),
-                "round_no": str(slot['round_no'])  # Added round_no
+                "round_no": str(slot['round_no'])
             }
         return None
     finally:
         cursor.close()
+        connection.close()
 
 @app.get('/add_result/{interview_id}/{faculty_id}/{candidate_id}/{result}/{remarks}/{round_no}')
 async def add_interview_result(
@@ -417,6 +429,7 @@ async def add_interview_result(
     remarks: str,
     round_no: int
 ):
+    connection = get_connection('interviewer')  # Interviewer adds results
     try:
         cursor = connection.cursor(dictionary=True)
         query = """
@@ -440,10 +453,11 @@ async def add_interview_result(
     finally:
         if cursor:
             cursor.close()
-
+        connection.close()
 
 @app.get('/current_round/{candidate_id}')
 async def get_current_round(candidate_id: str):
+    connection = get_connection('interviewee')  # Interviewee checks current round
     try:
         cursor = connection.cursor(dictionary=True)
         query = """
@@ -456,3 +470,4 @@ async def get_current_round(candidate_id: str):
         return {"next_round": result['next_round']}
     finally:
         cursor.close()
+        connection.close()
