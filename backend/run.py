@@ -406,7 +406,7 @@ async def get_booked_slot(candidate_id: str):
     finally:
         cursor.close()
 
-@app.post('/add_result')
+@app.get('/add_result/{interview_id}/{faculty_id}/{candidate_id}/{result}/{remarks}/{round_no}')
 async def add_interview_result(
     interview_id: str,
     faculty_id: str,

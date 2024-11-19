@@ -130,30 +130,25 @@ export default function InterviewerPortal() {
   const handleResultSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8000/add_result', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          interview_id: selectedCandidate.id,
-          faculty_id: userId,
-          candidate_id: selectedCandidate.candidate_id,
-          result: resultForm.result,
-          remarks: resultForm.remarks,
-          round_no: resultForm.round_no
-        }),
-      });
-
+      console.log('',selectedCandidate)
+      const response = await fetch(
+        `http://localhost:8000/add_result/${selectedCandidate.id}/${userId}/${selectedCandidate.candidate_id}/${resultForm.result}/${resultForm.remarks}/${resultForm.round_no}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+  
       if (!response.ok) {
         throw new Error('Failed to submit result');
       }
-
+  
       alert('Result submitted successfully');
       setResultForm({ result: '', remarks: '', round_no: 1 });
-      setIsResultModalOpen(false);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error submitting result:', error);
       alert('Failed to submit result');
     }
   };
