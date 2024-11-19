@@ -316,7 +316,8 @@ async def fetch_interviews(faculty_id: str):
                 c.skills,
                 c.publications,
                 c.experience,
-                i.round_no
+                i.round_no,
+                i.interview_id
             FROM interview_schedule i
             JOIN candidate c ON i.candidate_id = c.candidate_id  
             WHERE i.faculty_id = %s
@@ -337,7 +338,8 @@ async def fetch_interviews(faculty_id: str):
                 "skills": str(interview['skills']),
                 "publications": str(interview['publications']),
                 "experience": str(interview['experience']),
-                "round_no": str(interview.get('round_no', '1'))
+                "round_no": str(interview.get('round_no')),
+                'interview_id' : str(interview.get('interview_id'))
             }
             for interview in interviews
         ]
@@ -406,7 +408,7 @@ async def get_booked_slot(candidate_id: str):
     finally:
         cursor.close()
 
-@app.post('/add_result')
+@app.get('/add_result/{interview_id}/{faculty_id}/{candidate_id}/{result}/{remarks}/{round_no}')
 async def add_interview_result(
     interview_id: str,
     faculty_id: str,

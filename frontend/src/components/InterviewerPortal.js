@@ -130,30 +130,25 @@ export default function InterviewerPortal() {
   const handleResultSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8000/add_result/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          interview_id: selectedCandidate.id,
-          faculty_id: userId,
-          candidate_id: selectedCandidate.candidate_id,
-          result: resultForm.result,
-          remarks: resultForm.remarks,
-          round_no: resultForm.round_no
-        }),
-      });
-
+      console.log('dalfjjdjlf da',resultForm)
+      const response = await fetch(
+        `http://localhost:8000/add_result/${selectedCandidate.interview_id}/${userId}/${selectedCandidate.candidate_id}/${resultForm.result}/${resultForm.remarks}/${selectedCandidate.round_no}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+  
       if (!response.ok) {
         throw new Error('Failed to submit result');
       }
-
+  
       alert('Result submitted successfully');
       setResultForm({ result: '', remarks: '', round_no: 1 });
-      setIsResultModalOpen(false);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error submitting result:', error);
       alert('Failed to submit result');
     }
   };
@@ -249,12 +244,14 @@ export default function InterviewerPortal() {
                           <p className="text-sm text-gray-500">{interview.interview_date} - {interview.interview_time}</p>
                         </div>
                       </div>
-                      <Button onClick={() => openCandidateModal(interview)}>
+                      <Button onClick={() => {openCandidateModal(interview)
+                      console.log(interview)}}>
                         <Info className="h-4 w-4 mr-2" />
                         View Details
                       </Button>
                       <Button 
                         onClick={() => {
+                          console.log(interview)
                           setSelectedCandidate(interview);
                           setIsResultModalOpen(true);
                         }}
